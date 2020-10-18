@@ -59,7 +59,7 @@ pub struct Lexer<'a>
 	state: LexerState,
 
 	// The list of tokens
-	tokens: Vec<&'a Token>,
+	tokens: Vec<Token>,
 	token_pos: usize,
 
 	// The string being parsed
@@ -82,13 +82,8 @@ impl<'a> Lexer<'a>
 			string: &string
 		}
 	}
-}
 
-impl<'a> Iterator for Lexer<'a>
-{
-	type Item = &'a Token;
-
-	fn next(&mut self) -> Option<&'a Token>
+	fn next(&mut self) -> Option<&Token>
 	{
 		// If there's a next token on the list, yield it
 		if self.token_pos < self.tokens.len()
