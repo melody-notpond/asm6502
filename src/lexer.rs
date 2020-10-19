@@ -232,21 +232,21 @@ impl Iterator for Lexer {
 							token.value = TokenValue::Dec(0);
 						} else {
 							// Parse
-						let string = &self.string[self.state.pos + 1..self.state.pos + c.0];
-						let parsed = u16::from_str_radix(string, 8);
+							let string = &self.string[self.state.pos + 1..self.state.pos + c.0];
+							let parsed = u16::from_str_radix(string, 8);
 
-						// Check for overflow
-						match parsed
-						{
-							Ok(n) => *v = n,
-							Err(_) => {
-								token.value = TokenValue::Err(format!("'{}' is an invalid 16 bit integer", string));
+							// Check for overflow
+							match parsed
+							{
+								Ok(n) => *v = n,
+								Err(_) => {
+									token.value = TokenValue::Err(format!("'{}' is an invalid 16 bit integer", string));
+								}
 							}
-						}
 
-						// Exit the loop
-						self.state.pos += c.0;
-						break;
+							// Exit the loop
+							self.state.pos += c.0;
+							break;
 						}
 
 						self.state.pos += c.0;
