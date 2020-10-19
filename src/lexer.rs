@@ -46,7 +46,7 @@ pub struct Token {
 	pub charpos: u32,
 
 	// The type of the token
-	pub token_value: TokenValue,
+	pub value: TokenValue,
 }
 
 // Represents a lexer state.
@@ -132,17 +132,17 @@ impl Iterator for Lexer {
 			pos: self.state.pos,
 			lino: self.state.lino,
 			charpos: self.state.charpos,
-			token_value: TokenValue::None,
+			value: TokenValue::None,
 		};
 
 		// Iterate over the characters of the string
 		for c in self.string[self.state.pos..].char_indices() {
-			match &mut token.token_value {
+			match &mut token.value {
 				// No type has been assigned to the token
 				TokenValue::None => {
 					// Error token (unknown character)
 					if c.0 != 0 {
-						token.token_value = TokenValue::Err(String::from(
+						token.value = TokenValue::Err(String::from(
 							&self.string[self.state.pos..self.state.pos + c.0],
 						));
 						self.state.pos += c.0;
@@ -150,46 +150,46 @@ impl Iterator for Lexer {
 
 					// Symbol characters and newline
 					} else if c.1 == '(' {
-						token.token_value = TokenValue::LParen;
+						token.value = TokenValue::LParen;
 					} else if c.1 == ')' {
-						token.token_value = TokenValue::RParen;
+						token.value = TokenValue::RParen;
 					} else if c.1 == ':' {
-						token.token_value = TokenValue::Colon;
+						token.value = TokenValue::Colon;
 					} else if c.1 == ',' {
-						token.token_value = TokenValue::Comma;
+						token.value = TokenValue::Comma;
 					} else if c.1 == '\n' {
-						token.token_value = TokenValue::Newline;
+						token.value = TokenValue::Newline;
 
 						// Update lines
 						self.state.charpos = 0;
 						self.state.lino += 1;
 					} else if c.1 == '<' {
-						token.token_value = TokenValue::LT;
+						token.value = TokenValue::LT;
 					} else if c.1 == '>' {
-						token.token_value = TokenValue::GT;
+						token.value = TokenValue::GT;
 					} else if c.1 == '.' {
-						token.token_value = TokenValue::Dot;
+						token.value = TokenValue::Dot;
 					} else if c.1 == '#' {
-						token.token_value = TokenValue::Hash;
+						token.value = TokenValue::Hash;
 
 					// Symbols
 					} else if ('a' <= c.1 && c.1 <= 'z') || ('A' <= c.1 && c.1 <= 'Z') || c.1 == '_'
 					{
-						token.token_value = TokenValue::Symbol(String::from(""));
+						token.value = TokenValue::Symbol(String::from(""));
 
 					// Number literals
 					} else if c.1 == '%' {
-						token.token_value = TokenValue::Bin(0);
+						token.value = TokenValue::Bin(0);
 					} else if c.1 == '0' {
-						token.token_value = TokenValue::Oct(0);
+						token.value = TokenValue::Oct(0);
 					} else if '1' <= c.1 && c.1 <= '9' {
-						token.token_value = TokenValue::Dec(0);
+						token.value = TokenValue::Dec(0);
 					} else if c.1 == '$' {
-						token.token_value = TokenValue::Hex(0);
+						token.value = TokenValue::Hex(0);
 
 					// Strings
 					} else if c.1 == '"' {
-						token.token_value = TokenValue::String(String::new());
+						token.value = TokenValue::String(String::new());
 					}
 				}
 
@@ -207,8 +207,20 @@ impl Iterator for Lexer {
 
 				TokenValue::Bin(v) => {
 					if !(c.1 == '0' || c.1 == '1') {
+						// Parse
 						let string = &self.string[self.state.pos + 1..self.state.pos + c.0];
-						*v = u16::from_str_radix(string, 2).unwrap();
+						let parsed = u16::from_str_radix(string, 2);
+
+						// Check for overflow
+						match parsed
+						{
+							Ok(n) => *v = n,
+							Err(_) => {
+								token.value = TokenValue::Err(format!("'{}' is an invalid 16 bit integer", string));
+							}
+						}
+
+						// Exit the loop
 						self.state.pos += c.0;
 						break;
 					}
@@ -217,10 +229,24 @@ impl Iterator for Lexer {
 				TokenValue::Oct(v) => {
 					if !('0' <= c.1 && c.1 <= '7') {
 						if c.0 == 1 {
-							token.token_value = TokenValue::Dec(0);
+							token.value = TokenValue::Dec(0);
 						} else {
-							let string = &self.string[self.state.pos + 1..self.state.pos + c.0];
-							*v = u16::from_str_radix(string, 8).unwrap();
+							// Parse
+						let string = &self.string[self.state.pos + 1..self.state.pos + c.0];
+						let parsed = u16::from_str_radix(string, 8);
+
+						// Check for overflow
+						match parsed
+						{
+							Ok(n) => *v = n,
+							Err(_) => {
+								token.value = TokenValue::Err(format!("'{}' is an invalid 16 bit integer", string));
+							}
+						}
+
+						// Exit the loop
+						self.state.pos += c.0;
+						break;
 						}
 
 						self.state.pos += c.0;
@@ -230,8 +256,20 @@ impl Iterator for Lexer {
 
 				TokenValue::Dec(v) => {
 					if !('0' <= c.1 && c.1 <= '9') {
-						let string = &self.string[self.state.pos..self.state.pos + c.0];
-						*v = u16::from_str_radix(string, 10).unwrap();
+						// Parse
+						let string = &self.string[self.state.pos + 1..self.state.pos + c.0];
+						let parsed = u16::from_str_radix(string, 10);
+
+						// Check for overflow
+						match parsed
+						{
+							Ok(n) => *v = n,
+							Err(_) => {
+								token.value = TokenValue::Err(format!("'{}' is an invalid 16 bit integer", string));
+							}
+						}
+
+						// Exit the loop
 						self.state.pos += c.0;
 						break;
 					}
@@ -239,8 +277,20 @@ impl Iterator for Lexer {
 
 				TokenValue::Hex(v) => {
 					if !(('0' <= c.1 && c.1 <= '9') || ('a' <= c.1 && c.1 <= 'f') || ('A' <= c.1 && c.1 <= 'F')) {
+						// Parse
 						let string = &self.string[self.state.pos + 1..self.state.pos + c.0];
-						*v = u16::from_str_radix(string, 16).unwrap();
+						let parsed = u16::from_str_radix(string, 16);
+
+						// Check for overflow
+						match parsed
+						{
+							Ok(n) => *v = n,
+							Err(_) => {
+								token.value = TokenValue::Err(format!("'{}' is an invalid 16 bit integer", string));
+							}
+						}
+
+						// Exit the loop
 						self.state.pos += c.0;
 						break;
 					}
@@ -251,7 +301,7 @@ impl Iterator for Lexer {
 						self.state.pos += c.0 + 1;
 						break;
 					} else if c.0 == self.string.len() - self.state.pos - 1 {
-						token.token_value = TokenValue::Err(String::from(&self.string[self.state.pos..self.state.pos + c.0]));
+						token.value = TokenValue::Err(String::from(&self.string[self.state.pos..self.state.pos + c.0]));
 						self.state.pos += c.0;
 						break;
 					} else {
@@ -267,12 +317,12 @@ impl Iterator for Lexer {
 			}
 
 			// Update char position if not newline
-			if token.token_value != TokenValue::Newline {
+			if token.value != TokenValue::Newline {
 				self.state.charpos += 1;
 			}
 		}
 
-		if token.token_value == TokenValue::None {
+		if token.value == TokenValue::None {
 			None
 		} else {
 			Some(token)
