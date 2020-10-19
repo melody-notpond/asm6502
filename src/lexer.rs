@@ -83,20 +83,28 @@ impl Lexer {
 
 	fn skip_whitespace(&mut self) {
 		let mut in_comment = false;
+
 		for c in self.string[self.state.pos..].char_indices() {
+			// Comments end with a newline
 			if in_comment && c.1 == '\n' {
 				self.state.pos += 1;
 				self.state.charpos = 0;
 				self.state.lino += 1;
 				in_comment = false
+
+			// Skip whitespace and comments
 			} else if c.1 == ' ' || c.1 == '\t' || in_comment {
 				self.state.pos += 1;
 				self.state.charpos += 1;
+
+			// Mark semicolons as the start of a comment
 			} else if c.1 == ';'
 			{
 				in_comment = true;
 				self.state.pos += 1;
 				self.state.charpos += 1;
+
+			// Stop skipping if there's no more comments or whitespace
 			} else {
 				break;
 			}
