@@ -1,6 +1,6 @@
 ; example from http://logicalmoon.com/2017/11/using-vs-code-to-create-a-6502-hello-world/
 
-oswrch = $FFEE
+.define oswrch $FFEE
 
 .org $2000		 ; code origin (like P=$2000)
 

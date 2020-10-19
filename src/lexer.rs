@@ -82,8 +82,19 @@ impl Lexer {
 	}
 
 	fn skip_whitespace(&mut self) {
+		let mut in_comment = false;
 		for c in self.string[self.state.pos..].char_indices() {
-			if c.1 == ' ' || c.1 == '\t' {
+			if in_comment && c.1 == '\n' {
+				self.state.pos += 1;
+				self.state.charpos = 0;
+				self.state.lino += 1;
+				in_comment = false
+			} else if c.1 == ' ' || c.1 == '\t' || in_comment {
+				self.state.pos += 1;
+				self.state.charpos += 1;
+			} else if c.1 == ';'
+			{
+				in_comment = true;
 				self.state.pos += 1;
 				self.state.charpos += 1;
 			} else {
@@ -197,8 +208,13 @@ impl Iterator for Lexer {
 
 				TokenValue::Oct(v) => {
 					if !('0' <= c.1 && c.1 <= '7') {
-						let string = &self.string[self.state.pos + 1..self.state.pos + c.0];
-						*v = u16::from_str_radix(string, 8).unwrap();
+						if c.0 == 1 {
+							token.token_value = TokenValue::Dec(0);
+						} else {
+							let string = &self.string[self.state.pos + 1..self.state.pos + c.0];
+							*v = u16::from_str_radix(string, 8).unwrap();
+						}
+
 						self.state.pos += c.0;
 						break;
 					}
