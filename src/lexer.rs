@@ -12,6 +12,7 @@ pub enum TokenType
 {
 	// No token
 	None,
+	Err(String),
 
 	// Parentheses
 	LParen,
@@ -91,6 +92,18 @@ impl<'a> Lexer<'a>
 		}
 	}
 
+	fn skip_whitespace(&mut self)
+	{
+		for c in self.string[self.state.pos..].char_indices()
+		{
+			if c.1 == ' ' || c.1 == '\t'
+			{
+				self.state.pos += 1;
+				self.state.charpos += 1;
+			}
+		}
+	}
+
 	pub fn next(&mut self) -> &Token
 	{
 		// If there's a next token on the list, yield it
@@ -99,6 +112,9 @@ impl<'a> Lexer<'a>
 			&self.tokens[self.token_pos]
 		} else
 		{
+			// Skip whitespace
+			self.skip_whitespace();
+
 			// The token we will eventually return
 			let mut token = Token {
 				pos: self.state.pos,
@@ -108,17 +124,17 @@ impl<'a> Lexer<'a>
 			};
 
 			// Iterate over the characters of the string
-			let mut token_pos = self.token_pos;
-			for c in self.string[self.token_pos..].char_indices()
+			for c in self.string[self.state.pos..].char_indices()
 			{
 				match token.token_type
 				{
 					// No type has been assigned to the token
 					TokenType::None => {
 						// Error token (unknown character)
-						if self.token_pos != c.0
+						if self.state.pos != c.0
 						{
-							token_pos = c.0;
+							self.state.pos = c.0;
+							token.token_type = TokenType::Err(String::from(&self.string[self.token_pos..c.0]));
 							break;
 
 						// Symbol characters and newline
@@ -137,6 +153,10 @@ impl<'a> Lexer<'a>
 						} else if c.1 == '\n'
 						{
 							token.token_type = TokenType::Newline;
+
+							// Update lines
+							self.state.charpos = 0;
+							self.state.lino += 1;
 						} else if c.1 == '<'
 						{
 							token.token_type = TokenType::LT;
@@ -154,15 +174,22 @@ impl<'a> Lexer<'a>
 
 					// Type of the token is only one character
 					_ => {
-						token_pos = c.0;
+						self.state.pos = c.0;
 						break;
 					}
+				}
+
+				// Update char position if not newline
+				if let TokenType::Newline = token.token_type { }
+				else
+				{
+					self.state.charpos += 1;
 				}
 			}
 
 			// Save the token and return it
 			self.tokens.push(token);
-			self.token_pos = token_pos;
+			self.token_pos += 1;
 			let token = self.tokens.last().unwrap();
 			token
 		}
