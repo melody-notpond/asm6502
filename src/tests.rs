@@ -6,6 +6,7 @@
 // Created on October 18 2020.
 //
 
+#[allow(unused_imports)]
 use crate::lexer::*;
 
 #[test]
