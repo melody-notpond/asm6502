@@ -173,41 +173,48 @@ impl Iterator for Lexer {
 
 				TokenType::Symbol(s) => {
 					if !(('a' <= c.1 && c.1 <= 'z')
-						|| ('A' <= c.1 && c.1 <= 'Z') && ('0' <= c.1 && c.1 <= '9') && c.1 == '_')
+					  || ('A' <= c.1 && c.1 <= 'Z')
+					  || ('0' <= c.1 && c.1 <= '9')
+					  || c.1 == '_')
 					{
-						s.push_str(&self.string[self.state.pos..c.0]);
+						s.push_str(&self.string[self.state.pos..self.state.pos + c.0]);
+						self.state.pos += c.0;
 						break;
 					}
 				}
 
 				TokenType::Bin(v) => {
 					if !(c.1 == '0' || c.1 == '1') {
-						// u8::from_str_radix();
-						*v = u16::from_str_radix(&self.string[self.state.pos + 1..c.0], 2).unwrap();
+						let string = &self.string[self.state.pos + 1..self.state.pos + c.0];
+						*v = u16::from_str_radix(string, 2).unwrap();
+						self.state.pos += c.0;
 						break;
 					}
 				}
 
 				TokenType::Oct(v) => {
 					if !('0' <= c.1 && c.1 <= '7') {
-						// u8::from_str_radix();
-						*v = u16::from_str_radix(&self.string[self.state.pos + 1..c.0], 8).unwrap();
+						let string = &self.string[self.state.pos + 1..self.state.pos + c.0];
+						*v = u16::from_str_radix(string, 8).unwrap();
+						self.state.pos += c.0;
 						break;
 					}
 				}
 
 				TokenType::Dec(v) => {
 					if !('0' <= c.1 && c.1 <= '9') {
-						// u8::from_str_radix();
-						*v = u16::from_str_radix(&self.string[self.state.pos..c.0], 10).unwrap();
+						let string = &self.string[self.state.pos..self.state.pos + c.0];
+						*v = u16::from_str_radix(string, 10).unwrap();
+						self.state.pos += c.0;
 						break;
 					}
 				}
 
 				TokenType::Hex(v) => {
 					if !(('0' <= c.1 && c.1 <= '9') || ('a' <= c.1 && c.1 <= 'f') || ('A' <= c.1 && c.1 <= 'F')) {
-						// u8::from_str_radix();
-						*v = u16::from_str_radix(&self.string[self.state.pos + 1..c.0], 16).unwrap();
+						let string = &self.string[self.state.pos + 1..self.state.pos + c.0];
+						*v = u16::from_str_radix(string, 16).unwrap();
+						self.state.pos += c.0;
 						break;
 					}
 				}
