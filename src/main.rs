@@ -2,6 +2,8 @@ use std::env;
 use std::fs;
 use std::process;
 
+use asm6502::lexer;
+
 fn main()
 {
 	let args: Vec<String> = env::args().collect();

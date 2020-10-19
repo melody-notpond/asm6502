@@ -7,16 +7,11 @@
 // 
 
 // Represents the type of the token.
-enum TokenType
+#[derive(Debug)]
+pub enum TokenType
 {
-	// Symbol (labels, opcodes, pragmas, etc)
-	Symbol(String),
-
-	// Values
-	Byte(u8),
-	Word(u16),
-	String(Vec<u8>),
-	Char(u8),
+	// No token
+	None,
 
 	// Parentheses
 	LParen,
@@ -28,19 +23,39 @@ enum TokenType
 	Newline,
 	LT,
 	GT,
-	Dot
+	Dot,
+
+	// Symbol (labels, opcodes, pragmas, etc)
+	Symbol(String),
+
+	// Values
+	ImmBin(u8),
+	ImmOct(u8),
+	ImmDec(u8),
+	ImmHex(u8),
+	ByteBin(u8),
+	ByteOct(u8),
+	ByteDec(u8),
+	ByteHex(u8),
+	AddrBin(u16),
+	AddrOct(u16),
+	AddrDec(u16),
+	AddrHex(u16),
+	String(Vec<u8>),
+	Char(u8)
 }
 
 // Represents a token.
+#[derive(Debug)]
 pub struct Token
 {
 	// Where the token was generated
-	pos: usize,
-	lino: u32,
-	charpos: u32,
+	pub pos: usize,
+	pub lino: u32,
+	pub charpos: u32,
 
 	// The type of the token
-	t: TokenType
+	pub token_type: TokenType
 }
 
 // Represents a lexer state.
@@ -83,16 +98,87 @@ impl<'a> Lexer<'a>
 		}
 	}
 
-	fn next(&mut self) -> Option<&Token>
+	pub fn next(&mut self) -> &Token
 	{
 		// If there's a next token on the list, yield it
 		if self.token_pos < self.tokens.len()
 		{
-			Some(&self.tokens[self.token_pos])
+			&self.tokens[self.token_pos]
 		} else
 		{
-			// TODO
-			None
+			// The token we will eventually return
+			let mut token = Token {
+				pos: self.state.pos,
+				lino: self.state.lino,
+				charpos: self.state.charpos,
+				token_type: TokenType::None
+			};
+
+			// Iterate over the characters of the string
+			let mut token_pos = self.token_pos;
+			for c in self.string[self.token_pos..].char_indices()
+			{
+				match token.token_type
+				{
+					// No type has been assigned to the token
+					TokenType::None => {
+						// Error token (unknown character)
+						if self.token_pos != c.0
+						{
+							token_pos = c.0;
+							break;
+
+						// Symbol characters and newline
+						} else if c.1 == '('
+						{
+							token.token_type = TokenType::LParen;
+						} else if c.1 == ')'
+						{
+							token.token_type = TokenType::RParen;
+						} else if c.1 == ':'
+						{
+							token.token_type = TokenType::Colon;
+						} else if c.1 == ','
+						{
+							token.token_type = TokenType::Comma;
+						} else if c.1 == '\n'
+						{
+							token.token_type = TokenType::Newline;
+						} else if c.1 == '<'
+						{
+							token.token_type = TokenType::LT;
+						} else if c.1 == '>'
+						{
+							token.token_type = TokenType::GT;
+						} else if c.1 == '.'
+						{
+							token.token_type = TokenType::Dot;
+						}
+					},
+
+					// Type of the token is only one character
+					_ => {
+						token_pos = c.0;
+						break;
+					}
+				}
+			}
+
+			// Save the token and return it
+			self.tokens.push(token);
+			self.token_pos = token_pos;
+			let token = self.tokens.last().unwrap();
+			token
 		}
+	}
+
+	pub fn save(&self) -> LexerState
+	{
+		self.state
+	}
+
+	pub fn recall(&mut self, state: LexerState)
+	{
+		self.state = state
 	}
 }

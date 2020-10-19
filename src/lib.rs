@@ -6,4 +6,4 @@
 // Created on October 18 2020.
 // 
 
-mod lexer;
+pub mod lexer;
