@@ -81,6 +81,15 @@ impl Lexer {
 		}
 	}
 
+	// Returns the next token without updating the iterator
+	pub fn peek(&mut self) -> Option<Token> {
+		let state = self.save();
+		let token = self.next();
+		self.recall(state);
+		token
+	}
+
+	// Skips whitespace
 	fn skip_whitespace(&mut self) {
 		let mut in_comment = false;
 
@@ -111,10 +120,12 @@ impl Lexer {
 		}
 	}
 
+	// Returns the current state of the lexer
 	pub fn save(&self) -> LexerState {
 		self.state
 	}
 
+	// Recalls a prior state of the lexer
 	pub fn recall(&mut self, state: LexerState) {
 		self.state = state
 	}
