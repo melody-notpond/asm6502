@@ -7,7 +7,7 @@
 // 
 
 // Represents the type of the token.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum TokenType
 {
 	// No token
@@ -100,6 +100,9 @@ impl<'a> Lexer<'a>
 			{
 				self.state.pos += 1;
 				self.state.charpos += 1;
+			} else
+			{
+				break;
 			}
 		}
 	}
@@ -124,17 +127,18 @@ impl<'a> Lexer<'a>
 			};
 
 			// Iterate over the characters of the string
-			for c in self.string[self.state.pos..].char_indices()
+			let iter = self.string[self.state.pos..].char_indices();
+			for c in iter
 			{
 				match token.token_type
 				{
 					// No type has been assigned to the token
 					TokenType::None => {
 						// Error token (unknown character)
-						if self.state.pos != c.0
+						if c.0 != 0
 						{
-							self.state.pos = c.0;
-							token.token_type = TokenType::Err(String::from(&self.string[self.token_pos..c.0]));
+							token.token_type = TokenType::Err(String::from(&self.string[self.state.pos..self.state.pos + c.0]));
+							self.state.pos += c.0;
 							break;
 
 						// Symbol characters and newline
@@ -174,14 +178,13 @@ impl<'a> Lexer<'a>
 
 					// Type of the token is only one character
 					_ => {
-						self.state.pos = c.0;
+						self.state.pos += c.0;
 						break;
 					}
 				}
 
 				// Update char position if not newline
-				if let TokenType::Newline = token.token_type { }
-				else
+				if token.token_type != TokenType::Newline
 				{
 					self.state.charpos += 1;
 				}
