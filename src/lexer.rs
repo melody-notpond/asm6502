@@ -24,23 +24,16 @@ pub enum TokenType
 	LT,
 	GT,
 	Dot,
+	Hash,
 
 	// Symbol (labels, opcodes, pragmas, etc)
 	Symbol(String),
 
 	// Values
-	ImmBin(u8),
-	ImmOct(u8),
-	ImmDec(u8),
-	ImmHex(u8),
-	ByteBin(u8),
-	ByteOct(u8),
-	ByteDec(u8),
-	ByteHex(u8),
-	AddrBin(u16),
-	AddrOct(u16),
-	AddrDec(u16),
-	AddrHex(u16),
+	Bin(u16),
+	Oct(u16),
+	Dec(u16),
+	Hex(u16),
 	String(Vec<u8>),
 	Char(u8)
 }
@@ -153,6 +146,9 @@ impl<'a> Lexer<'a>
 						} else if c.1 == '.'
 						{
 							token.token_type = TokenType::Dot;
+						} else if c.1 == '#'
+						{
+							token.token_type = TokenType::Hash;
 						}
 					},
 
