@@ -1,15 +1,14 @@
-// 
+//
 // src
 // lexer.rs: Splits the file into tokens.
-// 
+//
 // Created by jenra.
 // Created on October 18 2020.
-// 
+//
 
 // Represents the type of the token.
 #[derive(Debug, PartialEq)]
-pub enum TokenType
-{
+pub enum TokenType {
 	// No token
 	None,
 	Err(String),
@@ -36,187 +35,158 @@ pub enum TokenType
 	Dec(u16),
 	Hex(u16),
 	String(Vec<u8>),
-	Char(u8)
+	Char(u8),
 }
 
 // Represents a token.
 #[derive(Debug)]
-pub struct Token
-{
+pub struct Token {
 	// Where the token was generated
 	pub pos: usize,
 	pub lino: u32,
 	pub charpos: u32,
 
 	// The type of the token
-	pub token_type: TokenType
+	pub token_type: TokenType,
 }
 
 // Represents a lexer state.
 #[derive(Copy, Clone)]
-pub struct LexerState
-{
+pub struct LexerState {
 	pos: usize,
 	lino: u32,
-	charpos: u32
+	charpos: u32,
 }
 
 // Represents a lexer.
-pub struct Lexer
-{
+pub struct Lexer {
 	// The state of the lexer
 	state: LexerState,
 
-	// The list of tokens
-	tokens: Vec<Token>,
-	token_pos: usize,
-
 	// The string being parsed
-	string: String
+	string: String,
 }
 
-impl Lexer
-{
+impl Lexer {
 	// Creates a new lexer
-	pub fn new(string: &String) -> Lexer
-	{
-		let mut string = string.clone();
+	pub fn new(string: &str) -> Lexer {
+		let mut string = String::from(string);
 		string.push(' ');
 		Lexer {
 			state: LexerState {
 				pos: 0,
 				lino: 1,
-				charpos: 0
+				charpos: 0,
 			},
-			tokens: Vec::new(),
-			token_pos: 0,
-			string: string
+			string: string,
 		}
 	}
 
-	fn skip_whitespace(&mut self)
-	{
-		for c in self.string[self.state.pos..].char_indices()
-		{
-			if c.1 == ' ' || c.1 == '\t'
-			{
+	fn skip_whitespace(&mut self) {
+		for c in self.string[self.state.pos..].char_indices() {
+			if c.1 == ' ' || c.1 == '\t' {
 				self.state.pos += 1;
 				self.state.charpos += 1;
-			} else
-			{
+			} else {
 				break;
 			}
 		}
 	}
 
-	pub fn next(&mut self) -> &Token
-	{
-		// If there's a next token on the list, yield it
-		if self.token_pos < self.tokens.len()
-		{
-			&self.tokens[self.token_pos]
-		} else
-		{
-			// Skip whitespace
-			self.skip_whitespace();
+	pub fn save(&self) -> LexerState {
+		self.state
+	}
 
-			// The token we will eventually return
-			let mut token = Token {
-				pos: self.state.pos,
-				lino: self.state.lino,
-				charpos: self.state.charpos,
-				token_type: TokenType::None
-			};
+	pub fn recall(&mut self, state: LexerState) {
+		self.state = state
+	}
+}
 
-			// Iterate over the characters of the string
-			for c in self.string[self.state.pos..].char_indices()
-			{
-				match &mut token.token_type
-				{
-					// No type has been assigned to the token
-					TokenType::None => {
-						// Error token (unknown character)
-						if c.0 != 0
-						{
-							token.token_type = TokenType::Err(String::from(&self.string[self.state.pos..self.state.pos + c.0]));
-							self.state.pos += c.0;
-							break;
+impl Iterator for Lexer {
+	type Item = Token;
 
-						// Symbol characters and newline
-						} else if c.1 == '('
-						{
-							token.token_type = TokenType::LParen;
-						} else if c.1 == ')'
-						{
-							token.token_type = TokenType::RParen;
-						} else if c.1 == ':'
-						{
-							token.token_type = TokenType::Colon;
-						} else if c.1 == ','
-						{
-							token.token_type = TokenType::Comma;
-						} else if c.1 == '\n'
-						{
-							token.token_type = TokenType::Newline;
+	fn next(&mut self) -> Option<Token> {
+		// Skip whitespace
+		self.skip_whitespace();
 
-							// Update lines
-							self.state.charpos = 0;
-							self.state.lino += 1;
-						} else if c.1 == '<'
-						{
-							token.token_type = TokenType::LT;
-						} else if c.1 == '>'
-						{
-							token.token_type = TokenType::GT;
-						} else if c.1 == '.'
-						{
-							token.token_type = TokenType::Dot;
-						} else if c.1 == '#'
-						{
-							token.token_type = TokenType::Hash;
-						} else if ('a' <= c.1 && c.1 <= 'z') || ('A' <= c.1 && c.1 <= 'Z') || c.1 == '_'
-						{
-							token.token_type = TokenType::Symbol(String::from(""));
-						}
-					},
+		// The token we will eventually return
+		let mut token = Token {
+			pos: self.state.pos,
+			lino: self.state.lino,
+			charpos: self.state.charpos,
+			token_type: TokenType::None,
+		};
 
-					TokenType::Symbol(s) => {
-						if !(('a' <= c.1 && c.1 <= 'z') || ('A' <= c.1 && c.1 <= 'Z') && ('0' <= c.1 && c.1 <= '9') && c.1 == '_')
-						{
-							s.push_str(&self.string[self.state.pos..c.0]);
-							break;
-						}
-					},
-
-					// Type of the token is only one character
-					_ => {
+		// Iterate over the characters of the string
+		for c in self.string[self.state.pos..].char_indices() {
+			match &mut token.token_type {
+				// No type has been assigned to the token
+				TokenType::None => {
+					// Error token (unknown character)
+					if c.0 != 0 {
+						token.token_type = TokenType::Err(String::from(
+							&self.string[self.state.pos..self.state.pos + c.0],
+						));
 						self.state.pos += c.0;
+						break;
+
+					// Symbol characters and newline
+					} else if c.1 == '(' {
+						token.token_type = TokenType::LParen;
+					} else if c.1 == ')' {
+						token.token_type = TokenType::RParen;
+					} else if c.1 == ':' {
+						token.token_type = TokenType::Colon;
+					} else if c.1 == ',' {
+						token.token_type = TokenType::Comma;
+					} else if c.1 == '\n' {
+						token.token_type = TokenType::Newline;
+
+						// Update lines
+						self.state.charpos = 0;
+						self.state.lino += 1;
+					} else if c.1 == '<' {
+						token.token_type = TokenType::LT;
+					} else if c.1 == '>' {
+						token.token_type = TokenType::GT;
+					} else if c.1 == '.' {
+						token.token_type = TokenType::Dot;
+					} else if c.1 == '#' {
+						token.token_type = TokenType::Hash;
+
+					// Symbols
+					} else if ('a' <= c.1 && c.1 <= 'z') || ('A' <= c.1 && c.1 <= 'Z') || c.1 == '_'
+					{
+						token.token_type = TokenType::Symbol(String::from(""));
+					}
+				}
+
+				TokenType::Symbol(s) => {
+					if !(('a' <= c.1 && c.1 <= 'z')
+						|| ('A' <= c.1 && c.1 <= 'Z') && ('0' <= c.1 && c.1 <= '9') && c.1 == '_')
+					{
+						s.push_str(&self.string[self.state.pos..c.0]);
 						break;
 					}
 				}
 
-				// Update char position if not newline
-				if token.token_type != TokenType::Newline
-				{
-					self.state.charpos += 1;
+				// Type of the token is only one character
+				_ => {
+					self.state.pos += c.0;
+					break;
 				}
 			}
 
-			// Save the token and return it
-			self.tokens.push(token);
-			self.token_pos += 1;
-			let token = self.tokens.last().unwrap();
-			token
+			// Update char position if not newline
+			if token.token_type != TokenType::Newline {
+				self.state.charpos += 1;
+			}
 		}
-	}
 
-	pub fn save(&self) -> LexerState
-	{
-		self.state
-	}
-
-	pub fn recall(&mut self, state: LexerState)
-	{
-		self.state = state
+		if token.token_type == TokenType::None {
+			None
+		} else {
+			Some(token)
+		}
 	}
 }
