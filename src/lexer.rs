@@ -62,7 +62,7 @@ pub struct LexerState
 }
 
 // Represents a lexer.
-pub struct Lexer<'a>
+pub struct Lexer
 {
 	// The state of the lexer
 	state: LexerState,
@@ -72,14 +72,16 @@ pub struct Lexer<'a>
 	token_pos: usize,
 
 	// The string being parsed
-	string: &'a String
+	string: String
 }
 
-impl<'a> Lexer<'a>
+impl Lexer
 {
 	// Creates a new lexer
-	pub fn new(string: &'a String) -> Lexer<'a>
+	pub fn new(string: &String) -> Lexer
 	{
+		let mut string = string.clone();
+		string.push(' ');
 		Lexer {
 			state: LexerState {
 				pos: 0,
@@ -88,7 +90,7 @@ impl<'a> Lexer<'a>
 			},
 			tokens: Vec::new(),
 			token_pos: 0,
-			string: &string
+			string: string
 		}
 	}
 
@@ -127,8 +129,7 @@ impl<'a> Lexer<'a>
 			};
 
 			// Iterate over the characters of the string
-			let iter = self.string[self.state.pos..].char_indices();
-			for c in iter
+			for c in self.string[self.state.pos..].char_indices()
 			{
 				match token.token_type
 				{
