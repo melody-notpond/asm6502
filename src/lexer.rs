@@ -6,9 +6,9 @@
 // Created on October 18 2020.
 //
 
-// Represents the type of the token.
+// Represents the value of the token.
 #[derive(Debug, PartialEq)]
-pub enum TokenType {
+pub enum TokenValue {
 	// No token
 	None,
 	Err(String),
@@ -34,8 +34,7 @@ pub enum TokenType {
 	Oct(u16),
 	Dec(u16),
 	Hex(u16),
-	String(Vec<u8>),
-	Char(u8),
+	String(String)
 }
 
 // Represents a token.
@@ -47,7 +46,7 @@ pub struct Token {
 	pub charpos: u32,
 
 	// The type of the token
-	pub token_type: TokenType,
+	pub token_value: TokenValue,
 }
 
 // Represents a lexer state.
@@ -114,17 +113,17 @@ impl Iterator for Lexer {
 			pos: self.state.pos,
 			lino: self.state.lino,
 			charpos: self.state.charpos,
-			token_type: TokenType::None,
+			token_value: TokenValue::None,
 		};
 
 		// Iterate over the characters of the string
 		for c in self.string[self.state.pos..].char_indices() {
-			match &mut token.token_type {
+			match &mut token.token_value {
 				// No type has been assigned to the token
-				TokenType::None => {
+				TokenValue::None => {
 					// Error token (unknown character)
 					if c.0 != 0 {
-						token.token_type = TokenType::Err(String::from(
+						token.token_value = TokenValue::Err(String::from(
 							&self.string[self.state.pos..self.state.pos + c.0],
 						));
 						self.state.pos += c.0;
@@ -132,46 +131,50 @@ impl Iterator for Lexer {
 
 					// Symbol characters and newline
 					} else if c.1 == '(' {
-						token.token_type = TokenType::LParen;
+						token.token_value = TokenValue::LParen;
 					} else if c.1 == ')' {
-						token.token_type = TokenType::RParen;
+						token.token_value = TokenValue::RParen;
 					} else if c.1 == ':' {
-						token.token_type = TokenType::Colon;
+						token.token_value = TokenValue::Colon;
 					} else if c.1 == ',' {
-						token.token_type = TokenType::Comma;
+						token.token_value = TokenValue::Comma;
 					} else if c.1 == '\n' {
-						token.token_type = TokenType::Newline;
+						token.token_value = TokenValue::Newline;
 
 						// Update lines
 						self.state.charpos = 0;
 						self.state.lino += 1;
 					} else if c.1 == '<' {
-						token.token_type = TokenType::LT;
+						token.token_value = TokenValue::LT;
 					} else if c.1 == '>' {
-						token.token_type = TokenType::GT;
+						token.token_value = TokenValue::GT;
 					} else if c.1 == '.' {
-						token.token_type = TokenType::Dot;
+						token.token_value = TokenValue::Dot;
 					} else if c.1 == '#' {
-						token.token_type = TokenType::Hash;
+						token.token_value = TokenValue::Hash;
 
 					// Symbols
 					} else if ('a' <= c.1 && c.1 <= 'z') || ('A' <= c.1 && c.1 <= 'Z') || c.1 == '_'
 					{
-						token.token_type = TokenType::Symbol(String::from(""));
+						token.token_value = TokenValue::Symbol(String::from(""));
 
 					// Number literals
 					} else if c.1 == '%' {
-						token.token_type = TokenType::Bin(0);
+						token.token_value = TokenValue::Bin(0);
 					} else if c.1 == '0' {
-						token.token_type = TokenType::Oct(0);
+						token.token_value = TokenValue::Oct(0);
 					} else if '1' <= c.1 && c.1 <= '9' {
-						token.token_type = TokenType::Dec(0);
+						token.token_value = TokenValue::Dec(0);
 					} else if c.1 == '$' {
-						token.token_type = TokenType::Hex(0);
+						token.token_value = TokenValue::Hex(0);
+
+					// Strings
+					} else if c.1 == '"' {
+						token.token_value = TokenValue::String(String::new());
 					}
 				}
 
-				TokenType::Symbol(s) => {
+				TokenValue::Symbol(s) => {
 					if !(('a' <= c.1 && c.1 <= 'z')
 					  || ('A' <= c.1 && c.1 <= 'Z')
 					  || ('0' <= c.1 && c.1 <= '9')
@@ -183,7 +186,7 @@ impl Iterator for Lexer {
 					}
 				}
 
-				TokenType::Bin(v) => {
+				TokenValue::Bin(v) => {
 					if !(c.1 == '0' || c.1 == '1') {
 						let string = &self.string[self.state.pos + 1..self.state.pos + c.0];
 						*v = u16::from_str_radix(string, 2).unwrap();
@@ -192,7 +195,7 @@ impl Iterator for Lexer {
 					}
 				}
 
-				TokenType::Oct(v) => {
+				TokenValue::Oct(v) => {
 					if !('0' <= c.1 && c.1 <= '7') {
 						let string = &self.string[self.state.pos + 1..self.state.pos + c.0];
 						*v = u16::from_str_radix(string, 8).unwrap();
@@ -201,7 +204,7 @@ impl Iterator for Lexer {
 					}
 				}
 
-				TokenType::Dec(v) => {
+				TokenValue::Dec(v) => {
 					if !('0' <= c.1 && c.1 <= '9') {
 						let string = &self.string[self.state.pos..self.state.pos + c.0];
 						*v = u16::from_str_radix(string, 10).unwrap();
@@ -210,12 +213,25 @@ impl Iterator for Lexer {
 					}
 				}
 
-				TokenType::Hex(v) => {
+				TokenValue::Hex(v) => {
 					if !(('0' <= c.1 && c.1 <= '9') || ('a' <= c.1 && c.1 <= 'f') || ('A' <= c.1 && c.1 <= 'F')) {
 						let string = &self.string[self.state.pos + 1..self.state.pos + c.0];
 						*v = u16::from_str_radix(string, 16).unwrap();
 						self.state.pos += c.0;
 						break;
+					}
+				}
+
+				TokenValue::String(s) => {
+					if c.1 == '"' {
+						self.state.pos += c.0 + 1;
+						break;
+					} else if c.0 == self.string.len() - self.state.pos - 1 {
+						token.token_value = TokenValue::Err(String::from(&self.string[self.state.pos..self.state.pos + c.0]));
+						self.state.pos += c.0;
+						break;
+					} else {
+						s.push(c.1);
 					}
 				}
 
@@ -227,12 +243,12 @@ impl Iterator for Lexer {
 			}
 
 			// Update char position if not newline
-			if token.token_type != TokenType::Newline {
+			if token.token_value != TokenValue::Newline {
 				self.state.charpos += 1;
 			}
 		}
 
-		if token.token_type == TokenType::None {
+		if token.token_value == TokenValue::None {
 			None
 		} else {
 			Some(token)
