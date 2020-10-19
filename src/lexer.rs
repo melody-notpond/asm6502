@@ -158,6 +158,16 @@ impl Iterator for Lexer {
 					} else if ('a' <= c.1 && c.1 <= 'z') || ('A' <= c.1 && c.1 <= 'Z') || c.1 == '_'
 					{
 						token.token_type = TokenType::Symbol(String::from(""));
+
+					// Number literals
+					} else if c.1 == '%' {
+						token.token_type = TokenType::Bin(0);
+					} else if c.1 == '0' {
+						token.token_type = TokenType::Oct(0);
+					} else if '1' <= c.1 && c.1 <= '9' {
+						token.token_type = TokenType::Dec(0);
+					} else if c.1 == '$' {
+						token.token_type = TokenType::Hex(0);
 					}
 				}
 
@@ -166,6 +176,38 @@ impl Iterator for Lexer {
 						|| ('A' <= c.1 && c.1 <= 'Z') && ('0' <= c.1 && c.1 <= '9') && c.1 == '_')
 					{
 						s.push_str(&self.string[self.state.pos..c.0]);
+						break;
+					}
+				}
+
+				TokenType::Bin(v) => {
+					if !(c.1 == '0' || c.1 == '1') {
+						// u8::from_str_radix();
+						*v = u16::from_str_radix(&self.string[self.state.pos + 1..c.0], 2).unwrap();
+						break;
+					}
+				}
+
+				TokenType::Oct(v) => {
+					if !('0' <= c.1 && c.1 <= '7') {
+						// u8::from_str_radix();
+						*v = u16::from_str_radix(&self.string[self.state.pos + 1..c.0], 8).unwrap();
+						break;
+					}
+				}
+
+				TokenType::Dec(v) => {
+					if !('0' <= c.1 && c.1 <= '9') {
+						// u8::from_str_radix();
+						*v = u16::from_str_radix(&self.string[self.state.pos..c.0], 10).unwrap();
+						break;
+					}
+				}
+
+				TokenType::Hex(v) => {
+					if !(('0' <= c.1 && c.1 <= '9') || ('a' <= c.1 && c.1 <= 'f') || ('A' <= c.1 && c.1 <= 'F')) {
+						// u8::from_str_radix();
+						*v = u16::from_str_radix(&self.string[self.state.pos + 1..c.0], 16).unwrap();
 						break;
 					}
 				}
