@@ -131,7 +131,7 @@ impl Lexer
 			// Iterate over the characters of the string
 			for c in self.string[self.state.pos..].char_indices()
 			{
-				match token.token_type
+				match &mut token.token_type
 				{
 					// No type has been assigned to the token
 					TokenType::None => {
@@ -174,6 +174,17 @@ impl Lexer
 						} else if c.1 == '#'
 						{
 							token.token_type = TokenType::Hash;
+						} else if ('a' <= c.1 && c.1 <= 'z') || ('A' <= c.1 && c.1 <= 'Z') || c.1 == '_'
+						{
+							token.token_type = TokenType::Symbol(String::from(""));
+						}
+					},
+
+					TokenType::Symbol(s) => {
+						if !(('a' <= c.1 && c.1 <= 'z') || ('A' <= c.1 && c.1 <= 'Z') && ('0' <= c.1 && c.1 <= '9') && c.1 == '_')
+						{
+							s.push_str(&self.string[self.state.pos..c.0]);
+							break;
 						}
 					},
 
