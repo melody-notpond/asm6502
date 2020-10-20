@@ -209,7 +209,6 @@ fn parse_operand(lexer: &mut Lexer, line: &mut Line) -> Result<(), String> {
 	// Everything else
 	} else if let Some(token) = lexer.peek() {
 		// Get address
-		lexer.next();
 		let addr = match token.value {
 			TokenValue::Bin(n) => Address::Literal(n),
 			TokenValue::Oct(n) => Address::Literal(n),
@@ -219,9 +218,37 @@ fn parse_operand(lexer: &mut Lexer, line: &mut Line) -> Result<(), String> {
 			_ => return Ok(())
 		};
 
+		lexer.next();
 		// X and Y index addressing
 		line.addr_mode = if let Some(_) = optional!(lexer, TokenValue::Comma) {
-			AddressingMode::Implicit
+			let reg = unwrap_token!(consume!(lexer, TokenValue::Symbol(_), "Expected X or Y register")?, Symbol);
+
+			// X indexing addressing
+			if reg == "x" || reg == "X" {
+				// Zero page (lda $00, x)
+				if let Address::Literal(0..=255) = addr {
+					AddressingMode::ZeroPageX(addr)
+
+				// Absolute (lda $1234, x; lda label, x)
+				} else {
+					AddressingMode::AbsoluteX(addr)
+				}
+
+			// Y indexing addressing
+			} else if reg == "y" || reg == "Y" {
+				// Zero page (lda $00, y)
+				if let Address::Literal(0..=255) = addr {
+					AddressingMode::ZeroPageY(addr)
+
+				// Absolute (lda $1234, y; lda label, y)
+				} else {
+					AddressingMode::AbsoluteY(addr)
+				}
+
+			// Error
+			} else {
+				return Err(String::from("Expected X or Y register"));
+			}
 		} else {
 			// Zero page addressing (lda $00)
 			if let Address::Literal(0..=255) = addr {
