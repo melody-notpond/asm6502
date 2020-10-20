@@ -8,6 +8,8 @@
 
 #[allow(unused_imports)]
 use crate::lexer::*;
+#[allow(unused_imports)]
+use crate::parser::*;
 
 #[test]
 fn lexer_misc_chars() {
@@ -55,4 +57,22 @@ fn lexer_strings() {
 	assert_eq!(lexer.next().unwrap().value, TokenValue::String(String::from("this\nis\na\nmultiline\nstring\n")));
 	assert_eq!(lexer.next().unwrap().value, TokenValue::Err(String::from("\"this is an invalid string")));
 	assert!(if let None = lexer.next() { true } else { false });
+}
+
+#[test]
+fn parser_labels_opcodes() {
+	let string = String::from("
+		this_is_a_label: BRK
+			INX
+			INY
+
+		label_without_an_opcode:
+	");
+	let mut lexer = Lexer::new(&string);
+	let lines = match parse(&mut lexer) {
+		Ok(v) => v,
+		Err(_) => panic!("Lines should parse")
+	};
+	assert_eq!(lines.iter().map(|v| { v.label.as_str() }) .collect::<Vec<&str>>(), vec!["this_is_a_label", "", "", "label_without_an_opcode"]);
+	assert_eq!(lines.iter().map(|v| { v.opcode.as_str() }).collect::<Vec<&str>>(), vec!["BRK", "INX", "INY", ""]);
 }

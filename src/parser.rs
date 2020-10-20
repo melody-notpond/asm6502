@@ -90,6 +90,22 @@ macro_rules! unwrap_token {
 	};
 }
 
+// Optionally consumes a token
+macro_rules! optional {
+	($lexer: ident, $matchy: pat) => {
+		if let Some(token) = $lexer.peek() {
+			if let $matchy = token.value {
+				$lexer.next();
+				Some(token)
+			} else {
+				None
+			}
+		} else {
+			None
+		}
+	};
+}
+
 // Parses a line of 6502 assembly
 fn parse_line(lexer: &mut Lexer) -> Result<Line, String> {
 	let mut line = Line {
@@ -104,11 +120,21 @@ fn parse_line(lexer: &mut Lexer) -> Result<Line, String> {
 	// First token is a label
 	if let Some(_) = peek!(lexer, TokenValue::Colon) {
 		line.label = unwrap_token!(start_of_line, Symbol);
-		line.opcode = unwrap_token!(consume!(lexer, TokenValue::Symbol(_), "Expected opcode")?, Symbol);
+		consume!(lexer, TokenValue::Colon, "Expected colon")?;
+
+		// Optionally consume an opcode
+		if let Some(token) = optional!(lexer, TokenValue::Symbol(_)) {
+			line.opcode = unwrap_token!(token, Symbol);
+		}
 
 	// First token is an opcode
 	} else {
 		line.opcode = unwrap_token!(start_of_line, Symbol);
+	}
+
+	// Parse newline
+	if let Some(_) = lexer.peek() {
+		consume!(lexer, TokenValue::Newline, "Expected end of line")?;
 	}
 
 	// Success!
@@ -120,9 +146,12 @@ pub fn parse(lexer: &mut Lexer) -> Result<Vec<Line>, String> {
 	let mut lines = Vec::new();
 
 	// Iterate through all tokens
-	while let Some(_) = lexer.peek() {
+	loop {
 		// Skip newlines
 		while let Some(_) = peek!(lexer, TokenValue::Newline) { lexer.next(); }
+
+		// Stop parsing if there's nothing left
+		if let None = lexer.peek() { break; }
 
 		// Get next line
 		let line = parse_line(lexer)?;

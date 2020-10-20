@@ -268,7 +268,7 @@ impl Iterator for Lexer {
 				TokenValue::Dec(v) => {
 					if !('0' <= c.1 && c.1 <= '9') {
 						// Parse
-						let string = &self.string[self.state.pos + 1..self.state.pos + c.0];
+						let string = &self.string[self.state.pos..self.state.pos + c.0];
 						let parsed = u16::from_str_radix(string, 10);
 
 						// Check for overflow
