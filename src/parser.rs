@@ -10,7 +10,7 @@ use crate::lexer::Lexer;
 use crate::lexer::TokenValue;
 
 // Represents an immediate value
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ImmediateValue {
 	Literal(u8),
 	Label(String),
@@ -19,14 +19,14 @@ pub enum ImmediateValue {
 }
 
 // Represents an address
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Address {
 	Literal(u16),
 	Label(String)
 }
 
 // Represents an addressing mode
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum AddressingMode {
 	Implicit,
 	Immediate(ImmediateValue),
@@ -106,6 +106,7 @@ macro_rules! optional {
 	};
 }
 
+// Checks if the literal is under 256 and returns an ImmediateValue if it is, an error if not
 fn check_overflow(n: u16) -> Result<ImmediateValue, String>
 {
 	if n < 256 {
@@ -115,6 +116,7 @@ fn check_overflow(n: u16) -> Result<ImmediateValue, String>
 	}
 }
 
+// Parses an operand
 fn parse_operand(lexer: &mut Lexer, line: &mut Line) -> Result<(), String> {
 	// Immediate values
 	if let Some(_) = optional!(lexer, TokenValue::Hash) {
@@ -131,6 +133,15 @@ fn parse_operand(lexer: &mut Lexer, line: &mut Line) -> Result<(), String> {
 				TokenValue::Dec(n) => check_overflow(n),
 				TokenValue::Hex(n) => check_overflow(n),
 				TokenValue::Symbol(s) => Ok(ImmediateValue::Label(s)),
+
+				TokenValue::LT => {
+					Ok(ImmediateValue::LowByte(unwrap_token!(consume!(lexer, TokenValue::Symbol(_), "Expected label")?, Symbol)))
+				}
+
+				TokenValue::GT => {
+					Ok(ImmediateValue::HighByte(unwrap_token!(consume!(lexer, TokenValue::Symbol(_), "Expected label")?, Symbol)))
+				}
+
 				_ => Err(String::from(""))
 			}?
 		);
