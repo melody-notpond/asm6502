@@ -41,13 +41,25 @@ pub enum AddressingMode {
 	Indirect(Address)
 }
 
+#[derive(Debug)]
+pub struct Instruction {
+	pub opcode: String,
+	pub addr_mode: AddressingMode
+}
+
+#[derive(Debug)]
+pub enum LineValue {
+	None,
+	Instruction(Instruction),
+	// Pragma(Pragma)
+}
+
 // Represents a line of 6502 assembly
 #[derive(Debug)]
 pub struct Line {
 	pub lino: u32,
 	pub label: String,
-	pub opcode: String,
-	pub addr_mode: AddressingMode
+	pub value: LineValue
 }
 
 #[derive(Debug)]
@@ -133,7 +145,7 @@ fn check_overflow(lexer: &Lexer, n: u16) -> Result<ImmediateValue, ParseError>
 }
 
 // Parses an operand
-fn parse_operand(lexer: &mut Lexer, line: &mut Line) -> Result<(), ParseError> {
+fn parse_operand(lexer: &mut Lexer, instr: &mut Instruction) -> Result<(), ParseError> {
 	// Immediate values (lda #imm)
 	if let Some(_) = optional!(lexer, TokenValue::Hash) {
 		// Get operand
@@ -143,7 +155,7 @@ fn parse_operand(lexer: &mut Lexer, line: &mut Line) -> Result<(), ParseError> {
 		};
 
 		// Match operand
-		line.addr_mode = AddressingMode::Immediate(
+		instr.addr_mode = AddressingMode::Immediate(
 			match operand.value {
 				TokenValue::Bin(n) => check_overflow(lexer, n),
 				TokenValue::Oct(n) => check_overflow(lexer, n),
@@ -197,7 +209,7 @@ fn parse_operand(lexer: &mut Lexer, line: &mut Line) -> Result<(), ParseError> {
 			consume!(lexer, TokenValue::RParen, "Expected right parenthesis")?;
 
 			// Save
-			line.addr_mode = AddressingMode::IndirectX(addr);
+			instr.addr_mode = AddressingMode::IndirectX(addr);
 
 		// Indirect Y addressing and indirect addressing
 		} else if let Some(_) = optional!(lexer, TokenValue::RParen) {
@@ -210,11 +222,11 @@ fn parse_operand(lexer: &mut Lexer, line: &mut Line) -> Result<(), ParseError> {
 				}
 
 				// Save
-				line.addr_mode = AddressingMode::IndirectY(addr);
+				instr.addr_mode = AddressingMode::IndirectY(addr);
 
 			// Indirect addressing (jmp (addr))
 			} else {
-				line.addr_mode = AddressingMode::Indirect(addr);
+				instr.addr_mode = AddressingMode::Indirect(addr);
 			}
 
 		// Unpaired right parenthesis
@@ -236,7 +248,7 @@ fn parse_operand(lexer: &mut Lexer, line: &mut Line) -> Result<(), ParseError> {
 
 		lexer.next();
 		// X and Y index addressing
-		line.addr_mode = if let Some(_) = optional!(lexer, TokenValue::Comma) {
+		instr.addr_mode = if let Some(_) = optional!(lexer, TokenValue::Comma) {
 			let reg = unwrap_token!(consume!(lexer, TokenValue::Symbol(_), "Expected X or Y register")?, Symbol);
 
 			// X indexing addressing
@@ -280,36 +292,46 @@ fn parse_operand(lexer: &mut Lexer, line: &mut Line) -> Result<(), ParseError> {
 	Ok(())
 }
 
+// Parses everything in the line after the label
+fn parse_post_label(lexer: &mut Lexer) -> Result<LineValue, ParseError> {
+	// Parse instruction
+	if let Some(token) = optional!(lexer, TokenValue::Symbol(_)) {
+		let mut instr = Instruction {
+			opcode: unwrap_token!(token, Symbol),
+			addr_mode: AddressingMode::Implicit
+		};
+
+		// Parse operand
+		parse_operand(lexer, &mut instr)?;
+		Ok(LineValue::Instruction(instr))
+
+	// Nothing after label
+	} else {
+		Ok(LineValue::None)
+	}
+}
+
 // Parses a line of 6502 assembly
 fn parse_line(lexer: &mut Lexer) -> Result<Line, ParseError> {
 	let mut line = Line {
 		lino: lexer.get_lino(),
 		label: String::from(""),
-		opcode: String::from(""),
-		addr_mode: AddressingMode::Implicit
+		value: LineValue::None
 	};
 
 	// First token
-	let start_of_line = consume!(lexer, TokenValue::Symbol(_), "Expected opcode or label")?;
+	let state = lexer.save();
+	let label = consume!(lexer, TokenValue::Symbol(_), "Expected opcode or label")?;
 
 	// First token is a label
 	if let Some(_) = optional!(lexer, TokenValue::Colon) {
-		line.label = unwrap_token!(start_of_line, Symbol);
-
-		// Optionally consume an opcode
-		if let Some(token) = optional!(lexer, TokenValue::Symbol(_)) {
-			line.opcode = unwrap_token!(token, Symbol);
-		}
-
-	// First token is an opcode
+		line.label = unwrap_token!(label, Symbol);
 	} else {
-		line.opcode = unwrap_token!(start_of_line, Symbol);
+		lexer.recall(state);
 	}
 
-	// Parse the operand
-	if line.opcode != "" {
-		parse_operand(lexer, &mut line)?;
-	}
+	// Parse everything after the label
+	line.value = parse_post_label(lexer)?;
 
 	// Parse newline if not at eof
 	if let Some(_) = lexer.peek() {

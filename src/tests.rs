@@ -74,5 +74,4 @@ fn parser_labels_opcodes() {
 		Err(_) => panic!("Lines should parse")
 	};
 	assert_eq!(lines.iter().map(|v| { v.label.as_str() }) .collect::<Vec<&str>>(), vec!["this_is_a_label", "", "", "label_without_an_opcode"]);
-	assert_eq!(lines.iter().map(|v| { v.opcode.as_str() }).collect::<Vec<&str>>(), vec!["BRK", "INX", "INY", ""]);
 }

@@ -123,6 +123,14 @@ impl Lexer {
 	pub fn get_lino(&self) -> u32 {
 		self.state.lino
 	}
+
+	pub fn save(&self) -> LexerState {
+		self.state
+	}
+
+	pub fn recall(&mut self, state: LexerState) {
+		self.state = state;
+	}
 }
 
 impl Iterator for Lexer {
