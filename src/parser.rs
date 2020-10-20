@@ -118,8 +118,9 @@ fn check_overflow(n: u16) -> Result<ImmediateValue, String>
 
 // Parses an operand
 fn parse_operand(lexer: &mut Lexer, line: &mut Line) -> Result<(), String> {
-	// Immediate values
+	// Immediate values (lda #imm)
 	if let Some(_) = optional!(lexer, TokenValue::Hash) {
+		// Get operand
 		let operand = match lexer.next() {
 			Some(token) => token,
 			None => return Err(String::from("Missing operand"))
@@ -149,6 +150,61 @@ fn parse_operand(lexer: &mut Lexer, line: &mut Line) -> Result<(), String> {
 				_ => Err(String::from(""))
 			}?
 		);
+
+	// Indirect addressing
+	} else if let Some(_) = optional!(lexer, TokenValue::LParen) {
+		// Get address token
+		let addr = match lexer.next() {
+			Some(token) => token,
+			None => return Err(String::from("Missing address"))
+		};
+
+		// Get address value
+		let addr = match addr.value {
+			TokenValue::Bin(n) => Address::Literal(n),
+			TokenValue::Oct(n) => Address::Literal(n),
+			TokenValue::Dec(n) => Address::Literal(n),
+			TokenValue::Hex(n) => Address::Literal(n),
+			TokenValue::Symbol(s) => Address::Label(s),
+			_ => return Err(String::from("Expected address"))
+		};
+
+		// Indirect X addressing (lda (addr, X))
+		if let Some(_) = optional!(lexer, TokenValue::Comma) {
+			// Consume X register
+			let x = unwrap_token!(consume!(lexer, TokenValue::Symbol(_), "Expected X register")?, Symbol);
+			if x != "x" && x != "X" {
+				return Err(String::from("Expected X register"));
+			}
+
+			// Consume right parenthesis
+			consume!(lexer, TokenValue::RParen, "Expected right parenthesis")?;
+
+			// Save
+			line.addr_mode = AddressingMode::IndirectX(addr);
+
+		// Indirect Y addressing and indirect addressing
+		} else if let Some(_) = optional!(lexer, TokenValue::RParen) {
+			// Indirect Y addressing (lda (addr), Y)
+			if let Some(_) = optional!(lexer, TokenValue::Comma) {
+				// Consume Y register
+				let x = unwrap_token!(consume!(lexer, TokenValue::Symbol(_), "Expected Y register")?, Symbol);
+				if x != "y" && x != "Y" {
+					return Err(String::from("Expected Y register"));
+				}
+
+				// Save
+				line.addr_mode = AddressingMode::IndirectY(addr);
+
+			// Indirect addressing (jmp (addr))
+			} else {
+				line.addr_mode = AddressingMode::Indirect(addr);
+			}
+
+		// Unpaired right parenthesis
+		} else {
+			return Err(String::from("Expected right parenthesis or comma"));
+		}
 	}
 
 	Ok(())
