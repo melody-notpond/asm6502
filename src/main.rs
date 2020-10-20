@@ -22,8 +22,7 @@ fn main() {
 		let mut lexer = Lexer::new(&content);
 		let lines = parser::parse(&mut lexer).expect("Invalid syntax");
 
-		for line in lines
-		{
+		for line in lines {
 			println!("{:?}", line);
 		}
 	}

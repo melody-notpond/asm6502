@@ -34,7 +34,7 @@ pub enum TokenValue {
 	Oct(u16),
 	Dec(u16),
 	Hex(u16),
-	String(String)
+	String(String),
 }
 
 // Represents a token.
@@ -107,8 +107,7 @@ impl Lexer {
 				self.state.charpos += 1;
 
 			// Mark semicolons as the start of a comment
-			} else if c.1 == ';'
-			{
+			} else if c.1 == ';' {
 				in_comment = true;
 				self.state.pos += 1;
 				self.state.charpos += 1;
@@ -155,8 +154,9 @@ impl Iterator for Lexer {
 				TokenValue::None => {
 					// Error token (unknown character)
 					if c.0 != 0 {
-						token.value = TokenValue::Err(String::from(
-							&self.string[self.state.pos..self.state.pos + c.0],
+						token.value = TokenValue::Err(format!(
+							"Invalid token '{}'",
+							&self.string[self.state.pos..self.state.pos + c.0]
 						));
 						self.state.pos += c.0;
 						break;
@@ -208,9 +208,9 @@ impl Iterator for Lexer {
 
 				TokenValue::Symbol(s) => {
 					if !(('a' <= c.1 && c.1 <= 'z')
-					  || ('A' <= c.1 && c.1 <= 'Z')
-					  || ('0' <= c.1 && c.1 <= '9')
-					  || c.1 == '_')
+						|| ('A' <= c.1 && c.1 <= 'Z')
+						|| ('0' <= c.1 && c.1 <= '9')
+						|| c.1 == '_')
 					{
 						s.push_str(&self.string[self.state.pos..self.state.pos + c.0]);
 						self.state.pos += c.0;
@@ -225,11 +225,13 @@ impl Iterator for Lexer {
 						let parsed = u16::from_str_radix(string, 2);
 
 						// Check for overflow
-						match parsed
-						{
+						match parsed {
 							Ok(n) => *v = n,
 							Err(_) => {
-								token.value = TokenValue::Err(format!("'{}' is an invalid 16 bit integer", string));
+								token.value = TokenValue::Err(format!(
+									"'{}' is an invalid 16 bit integer",
+									string
+								));
 							}
 						}
 
@@ -249,11 +251,13 @@ impl Iterator for Lexer {
 							let parsed = u16::from_str_radix(string, 8);
 
 							// Check for overflow
-							match parsed
-							{
+							match parsed {
 								Ok(n) => *v = n,
 								Err(_) => {
-									token.value = TokenValue::Err(format!("'{}' is an invalid 16 bit integer", string));
+									token.value = TokenValue::Err(format!(
+										"'{}' is an invalid 16 bit integer",
+										string
+									));
 								}
 							}
 
@@ -274,11 +278,13 @@ impl Iterator for Lexer {
 						let parsed = u16::from_str_radix(string, 10);
 
 						// Check for overflow
-						match parsed
-						{
+						match parsed {
 							Ok(n) => *v = n,
 							Err(_) => {
-								token.value = TokenValue::Err(format!("'{}' is an invalid 16 bit integer", string));
+								token.value = TokenValue::Err(format!(
+									"'{}' is an invalid 16 bit integer",
+									string
+								));
 							}
 						}
 
@@ -289,17 +295,22 @@ impl Iterator for Lexer {
 				}
 
 				TokenValue::Hex(v) => {
-					if !(('0' <= c.1 && c.1 <= '9') || ('a' <= c.1 && c.1 <= 'f') || ('A' <= c.1 && c.1 <= 'F')) {
+					if !(('0' <= c.1 && c.1 <= '9')
+						|| ('a' <= c.1 && c.1 <= 'f')
+						|| ('A' <= c.1 && c.1 <= 'F'))
+					{
 						// Parse
 						let string = &self.string[self.state.pos + 1..self.state.pos + c.0];
 						let parsed = u16::from_str_radix(string, 16);
 
 						// Check for overflow
-						match parsed
-						{
+						match parsed {
 							Ok(n) => *v = n,
 							Err(_) => {
-								token.value = TokenValue::Err(format!("'{}' is an invalid 16 bit integer", string));
+								token.value = TokenValue::Err(format!(
+									"'{}' is an invalid 16 bit integer",
+									string
+								));
 							}
 						}
 
@@ -314,7 +325,9 @@ impl Iterator for Lexer {
 						self.state.pos += c.0 + 1;
 						break;
 					} else if c.0 == self.string.len() - self.state.pos - 1 {
-						token.value = TokenValue::Err(String::from(&self.string[self.state.pos..self.state.pos + c.0]));
+						token.value = TokenValue::Err(String::from(
+							&self.string[self.state.pos..self.state.pos + c.0],
+						));
 						self.state.pos += c.0;
 						break;
 					} else {

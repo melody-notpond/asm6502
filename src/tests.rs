@@ -22,7 +22,10 @@ fn lexer_misc_chars() {
 	assert_eq!(lexer.next().unwrap().value, TokenValue::RParen);
 	assert_eq!(lexer.next().unwrap().value, TokenValue::Newline);
 	assert_eq!(lexer.next().unwrap().value, TokenValue::Hash);
-	assert_eq!(lexer.next().unwrap().value, TokenValue::Err(String::from("~")));
+	assert_eq!(
+		lexer.next().unwrap().value,
+		TokenValue::Err(String::from("Invalid token '~'"))
+	);
 	assert!(if let None = lexer.next() { true } else { false });
 }
 
@@ -30,9 +33,18 @@ fn lexer_misc_chars() {
 fn lexer_symbols() {
 	let string = String::from("hewwo HEWWO _underscore");
 	let mut lexer = Lexer::new(&string);
-	assert_eq!(lexer.next().unwrap().value, TokenValue::Symbol(String::from("hewwo")));
-	assert_eq!(lexer.next().unwrap().value, TokenValue::Symbol(String::from("HEWWO")));
-	assert_eq!(lexer.next().unwrap().value, TokenValue::Symbol(String::from("_underscore")));
+	assert_eq!(
+		lexer.next().unwrap().value,
+		TokenValue::Symbol(String::from("hewwo"))
+	);
+	assert_eq!(
+		lexer.next().unwrap().value,
+		TokenValue::Symbol(String::from("HEWWO"))
+	);
+	assert_eq!(
+		lexer.next().unwrap().value,
+		TokenValue::Symbol(String::from("_underscore"))
+	);
 	assert!(if let None = lexer.next() { true } else { false });
 }
 
@@ -52,26 +64,46 @@ fn lexer_numbers() {
 fn lexer_strings() {
 	let string = String::from("\"hewwo\" \"this is a string\" \"this\nis\na\nmultiline\nstring\n\" \"this is an invalid string");
 	let mut lexer = Lexer::new(&string);
-	assert_eq!(lexer.next().unwrap().value, TokenValue::String(String::from("hewwo")));
-	assert_eq!(lexer.next().unwrap().value, TokenValue::String(String::from("this is a string")));
-	assert_eq!(lexer.next().unwrap().value, TokenValue::String(String::from("this\nis\na\nmultiline\nstring\n")));
-	assert_eq!(lexer.next().unwrap().value, TokenValue::Err(String::from("\"this is an invalid string")));
+	assert_eq!(
+		lexer.next().unwrap().value,
+		TokenValue::String(String::from("hewwo"))
+	);
+	assert_eq!(
+		lexer.next().unwrap().value,
+		TokenValue::String(String::from("this is a string"))
+	);
+	assert_eq!(
+		lexer.next().unwrap().value,
+		TokenValue::String(String::from("this\nis\na\nmultiline\nstring\n"))
+	);
+	assert_eq!(
+		lexer.next().unwrap().value,
+		TokenValue::Err(String::from("\"this is an invalid string"))
+	);
 	assert!(if let None = lexer.next() { true } else { false });
 }
 
 #[test]
 fn parser_labels_opcodes() {
-	let string = String::from("
+	let string = String::from(
+		"
 		this_is_a_label: BRK
 			INX
 			INY
 
 		label_without_an_opcode:
-	");
+	",
+	);
 	let mut lexer = Lexer::new(&string);
 	let lines = match parse(&mut lexer) {
 		Ok(v) => v,
-		Err(_) => panic!("Lines should parse")
+		Err(_) => panic!("Lines should parse"),
 	};
-	assert_eq!(lines.iter().map(|v| { v.label.as_str() }) .collect::<Vec<&str>>(), vec!["this_is_a_label", "", "", "label_without_an_opcode"]);
+	assert_eq!(
+		lines
+			.iter()
+			.map(|v| { v.label.as_str() })
+			.collect::<Vec<&str>>(),
+		vec!["this_is_a_label", "", "", "label_without_an_opcode"]
+	);
 }
