@@ -44,9 +44,25 @@ pub enum AddressingMode {
 // Represents a line of 6502 assembly
 #[derive(Debug)]
 pub struct Line {
+	pub lino: u32,
 	pub label: String,
 	pub opcode: String,
 	pub addr_mode: AddressingMode
+}
+
+#[derive(Debug)]
+pub struct ParseError {
+	pub lino: u32,
+	pub message: String
+}
+
+impl ParseError {
+	fn new<T>(lexer: &Lexer, message: &str) -> Result<T, ParseError> {
+		Err(ParseError {
+			lino: lexer.get_lino(),
+			message: String::from(message)
+		})
+	}
 }
 
 // Consumes a token
@@ -57,10 +73,10 @@ macro_rules! consume {
 				$lexer.next();
 				Ok(token)
 			} else {
-				Err(String::from($err))
+				ParseError::new($lexer, $err)
 			}
 		} else {
-			Err(String::from("End of file reached"))
+			ParseError::new($lexer, "Unexpected EOF")
 		}
 	};
 }
@@ -107,32 +123,32 @@ macro_rules! optional {
 }
 
 // Checks if the literal is under 256 and returns an ImmediateValue if it is, an error if not
-fn check_overflow(n: u16) -> Result<ImmediateValue, String>
+fn check_overflow(lexer: &Lexer, n: u16) -> Result<ImmediateValue, ParseError>
 {
 	if n < 256 {
 		Ok(ImmediateValue::Literal(n as u8))
 	} else {
-		Err(String::from("Cannot use word as immediate value"))
+		ParseError::new(lexer, "Cannot use word as immediate value")
 	}
 }
 
 // Parses an operand
-fn parse_operand(lexer: &mut Lexer, line: &mut Line) -> Result<(), String> {
+fn parse_operand(lexer: &mut Lexer, line: &mut Line) -> Result<(), ParseError> {
 	// Immediate values (lda #imm)
 	if let Some(_) = optional!(lexer, TokenValue::Hash) {
 		// Get operand
 		let operand = match lexer.next() {
 			Some(token) => token,
-			None => return Err(String::from("Missing operand"))
+			None => return ParseError::new(lexer, "Missing operand")
 		};
 
 		// Match operand
 		line.addr_mode = AddressingMode::Immediate(
 			match operand.value {
-				TokenValue::Bin(n) => check_overflow(n),
-				TokenValue::Oct(n) => check_overflow(n),
-				TokenValue::Dec(n) => check_overflow(n),
-				TokenValue::Hex(n) => check_overflow(n),
+				TokenValue::Bin(n) => check_overflow(lexer, n),
+				TokenValue::Oct(n) => check_overflow(lexer, n),
+				TokenValue::Dec(n) => check_overflow(lexer, n),
+				TokenValue::Hex(n) => check_overflow(lexer, n),
 				TokenValue::Symbol(s) => Ok(ImmediateValue::Label(s)),
 
 				TokenValue::LT => {
@@ -147,7 +163,7 @@ fn parse_operand(lexer: &mut Lexer, line: &mut Line) -> Result<(), String> {
 					)
 				}
 
-				_ => Err(String::from(""))
+				_ => ParseError::new(lexer, "Expected literal, label, '<', or '>'")
 			}?
 		);
 
@@ -156,7 +172,7 @@ fn parse_operand(lexer: &mut Lexer, line: &mut Line) -> Result<(), String> {
 		// Get address token
 		let addr = match lexer.next() {
 			Some(token) => token,
-			None => return Err(String::from("Missing address"))
+			None => return ParseError::new(lexer, "Missing address")
 		};
 
 		// Get address value
@@ -166,7 +182,7 @@ fn parse_operand(lexer: &mut Lexer, line: &mut Line) -> Result<(), String> {
 			TokenValue::Dec(n) => Address::Literal(n),
 			TokenValue::Hex(n) => Address::Literal(n),
 			TokenValue::Symbol(s) => Address::Label(s),
-			_ => return Err(String::from("Expected address"))
+			_ => return ParseError::new(lexer, "Expected address")
 		};
 
 		// Indirect X addressing (lda (addr, X))
@@ -174,7 +190,7 @@ fn parse_operand(lexer: &mut Lexer, line: &mut Line) -> Result<(), String> {
 			// Consume X register
 			let x = unwrap_token!(consume!(lexer, TokenValue::Symbol(_), "Expected X register")?, Symbol);
 			if x != "x" && x != "X" {
-				return Err(String::from("Expected X register"));
+				return ParseError::new(lexer, "Expected X register");
 			}
 
 			// Consume right parenthesis
@@ -190,7 +206,7 @@ fn parse_operand(lexer: &mut Lexer, line: &mut Line) -> Result<(), String> {
 				// Consume Y register
 				let x = unwrap_token!(consume!(lexer, TokenValue::Symbol(_), "Expected Y register")?, Symbol);
 				if x != "y" && x != "Y" {
-					return Err(String::from("Expected Y register"));
+					return ParseError::new(lexer, "Expected Y register");
 				}
 
 				// Save
@@ -203,7 +219,7 @@ fn parse_operand(lexer: &mut Lexer, line: &mut Line) -> Result<(), String> {
 
 		// Unpaired right parenthesis
 		} else {
-			return Err(String::from("Expected right parenthesis or comma"));
+			return ParseError::new(lexer, "Expected right parenthesis or comma");
 		}
 
 	// Everything else
@@ -247,7 +263,7 @@ fn parse_operand(lexer: &mut Lexer, line: &mut Line) -> Result<(), String> {
 
 			// Error
 			} else {
-				return Err(String::from("Expected X or Y register"));
+				return ParseError::new(lexer, "Expected X or Y register");
 			}
 		} else {
 			// Zero page addressing (lda $00)
@@ -265,8 +281,9 @@ fn parse_operand(lexer: &mut Lexer, line: &mut Line) -> Result<(), String> {
 }
 
 // Parses a line of 6502 assembly
-fn parse_line(lexer: &mut Lexer) -> Result<Line, String> {
+fn parse_line(lexer: &mut Lexer) -> Result<Line, ParseError> {
 	let mut line = Line {
+		lino: lexer.get_lino(),
 		label: String::from(""),
 		opcode: String::from(""),
 		addr_mode: AddressingMode::Implicit
@@ -304,7 +321,7 @@ fn parse_line(lexer: &mut Lexer) -> Result<Line, String> {
 }
 
 // Parses a 6502 assembly file
-pub fn parse(lexer: &mut Lexer) -> Result<Vec<Line>, String> {
+pub fn parse(lexer: &mut Lexer) -> Result<Vec<Line>, ParseError> {
 	let mut lines = Vec::new();
 
 	// Iterate through all tokens

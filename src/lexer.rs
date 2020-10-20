@@ -83,9 +83,9 @@ impl Lexer {
 
 	// Returns the next token without updating the iterator
 	pub fn peek(&mut self) -> Option<Token> {
-		let state = self.save();
+		let state = self.state;
 		let token = self.next();
-		self.recall(state);
+		self.state = state;
 		token
 	}
 
@@ -120,14 +120,8 @@ impl Lexer {
 		}
 	}
 
-	// Returns the current state of the lexer
-	pub fn save(&self) -> LexerState {
-		self.state
-	}
-
-	// Recalls a prior state of the lexer
-	pub fn recall(&mut self, state: LexerState) {
-		self.state = state
+	pub fn get_lino(&self) -> u32 {
+		self.state.lino
 	}
 }
 
