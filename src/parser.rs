@@ -10,7 +10,7 @@ use crate::lexer::Lexer;
 use crate::lexer::TokenValue;
 
 // Represents an immediate value
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub enum ImmediateValue {
 	Literal(u8),
 	Label(String),
@@ -19,14 +19,14 @@ pub enum ImmediateValue {
 }
 
 // Represents an address
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub enum Address {
 	Literal(u16),
 	Label(String)
 }
 
 // Represents an addressing mode
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub enum AddressingMode {
 	Implicit,
 	Immediate(ImmediateValue),
@@ -135,11 +135,15 @@ fn parse_operand(lexer: &mut Lexer, line: &mut Line) -> Result<(), String> {
 				TokenValue::Symbol(s) => Ok(ImmediateValue::Label(s)),
 
 				TokenValue::LT => {
-					Ok(ImmediateValue::LowByte(unwrap_token!(consume!(lexer, TokenValue::Symbol(_), "Expected label")?, Symbol)))
+					Ok(ImmediateValue::LowByte(
+						unwrap_token!(consume!(lexer, TokenValue::Symbol(_), "Expected label")?, Symbol))
+					)
 				}
 
 				TokenValue::GT => {
-					Ok(ImmediateValue::HighByte(unwrap_token!(consume!(lexer, TokenValue::Symbol(_), "Expected label")?, Symbol)))
+					Ok(ImmediateValue::HighByte(
+						unwrap_token!(consume!(lexer, TokenValue::Symbol(_), "Expected label")?, Symbol))
+					)
 				}
 
 				_ => Err(String::from(""))
