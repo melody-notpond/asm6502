@@ -2,7 +2,7 @@
 
 .define oswrch $FFEE
 
-.org $2000		 ; code origin (like P=$2000)
+.origin $2000		 ; code origin (like P=$2000)
 
 _start:
 	LDX #$00

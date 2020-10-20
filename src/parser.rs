@@ -48,10 +48,20 @@ pub struct Instruction {
 }
 
 #[derive(Debug)]
+pub enum Pragma {
+	Byte(u8),
+	Bytes(Vec<u8>),
+	Word(Address),
+	Origin(Address),
+	Define(String, Address),
+	Include(String)
+}
+
+#[derive(Debug)]
 pub enum LineValue {
 	None,
 	Instruction(Instruction),
-	// Pragma(Pragma)
+	Pragma(Pragma)
 }
 
 // Represents a line of 6502 assembly
@@ -135,10 +145,10 @@ macro_rules! optional {
 }
 
 // Checks if the literal is under 256 and returns an ImmediateValue if it is, an error if not
-fn check_overflow(lexer: &Lexer, n: u16) -> Result<ImmediateValue, ParseError>
+fn check_overflow(lexer: &Lexer, n: u16) -> Result<u8, ParseError>
 {
 	if n < 256 {
-		Ok(ImmediateValue::Literal(n as u8))
+		Ok(n as u8)
 	} else {
 		ParseError::new(lexer, "Cannot use word as immediate value")
 	}
@@ -157,10 +167,10 @@ fn parse_operand(lexer: &mut Lexer, instr: &mut Instruction) -> Result<(), Parse
 		// Match operand
 		instr.addr_mode = AddressingMode::Immediate(
 			match operand.value {
-				TokenValue::Bin(n) => check_overflow(lexer, n),
-				TokenValue::Oct(n) => check_overflow(lexer, n),
-				TokenValue::Dec(n) => check_overflow(lexer, n),
-				TokenValue::Hex(n) => check_overflow(lexer, n),
+				TokenValue::Bin(n) => Ok(ImmediateValue::Literal(check_overflow(lexer, n)?)),
+				TokenValue::Oct(n) => Ok(ImmediateValue::Literal(check_overflow(lexer, n)?)),
+				TokenValue::Dec(n) => Ok(ImmediateValue::Literal(check_overflow(lexer, n)?)),
+				TokenValue::Hex(n) => Ok(ImmediateValue::Literal(check_overflow(lexer, n)?)),
 				TokenValue::Symbol(s) => Ok(ImmediateValue::Label(s)),
 
 				TokenValue::LT => {
@@ -292,6 +302,130 @@ fn parse_operand(lexer: &mut Lexer, instr: &mut Instruction) -> Result<(), Parse
 	Ok(())
 }
 
+// Parse a pragma
+fn parse_pragma(lexer: &mut Lexer) -> Result<Pragma, ParseError> {
+	// Get the name of the pragma
+	match unwrap_token!(consume!(lexer, TokenValue::Symbol(_), "Expected pragma after dot")?, Symbol).as_str() {
+		"byte" => {
+			// Consume a byte
+			if let Some(token) = lexer.next() {
+				Ok(Pragma::Byte(
+					match token.value {
+						TokenValue::Bin(n) => check_overflow(lexer, n)?,
+						TokenValue::Oct(n) => check_overflow(lexer, n)?,
+						TokenValue::Dec(n) => check_overflow(lexer, n)?,
+						TokenValue::Hex(n) => check_overflow(lexer, n)?,
+						_ => return ParseError::new(lexer, "Expected byte after .byte")
+					}
+				))
+			} else {
+				return ParseError::new(lexer, "Expected byte after .byte");
+			}
+		}
+
+		"bytes" => {
+			// Vector of bytes
+			let mut bytes: Vec<u8> = Vec::new();
+
+			// Get next token
+			while let Some(token) = lexer.peek() {
+				if let TokenValue::Newline = token.value { break; }
+				lexer.next();
+
+				match token.value {
+					// Push bytes to vector
+					TokenValue::Bin(n) => bytes.push(check_overflow(lexer, n)?),
+					TokenValue::Oct(n) => bytes.push(check_overflow(lexer, n)?),
+					TokenValue::Dec(n) => bytes.push(check_overflow(lexer, n)?),
+					TokenValue::Hex(n) => bytes.push(check_overflow(lexer, n)?),
+					TokenValue::String(s) => {
+						for b in s.bytes() {
+							bytes.push(b);
+						}
+					}
+
+					// Not a byte
+					_ => return ParseError::new(lexer, "Invalid byte")
+				}
+
+				// Commas
+				optional!(lexer, TokenValue::Comma);
+			}
+
+			Ok(Pragma::Bytes(bytes))
+		}
+
+		"word" => {
+			// Consume a word
+			if let Some(token) = lexer.next() {
+				Ok(Pragma::Word(
+					match token.value {
+						TokenValue::Bin(n) => Address::Literal(n),
+						TokenValue::Oct(n) => Address::Literal(n),
+						TokenValue::Dec(n) => Address::Literal(n),
+						TokenValue::Hex(n) => Address::Literal(n),
+						TokenValue::Symbol(s) => Address::Label(s),
+						_ => return ParseError::new(lexer, "Expected address or label after .word")
+					}
+				))
+			} else {
+				ParseError::new(lexer, "Expected address or label after .word")
+			}
+		}
+
+		"origin" => {
+			// Consume an address
+			if let Some(token) = lexer.next() {
+				Ok(Pragma::Origin(
+					match token.value {
+						TokenValue::Bin(n) => Address::Literal(n),
+						TokenValue::Oct(n) => Address::Literal(n),
+						TokenValue::Dec(n) => Address::Literal(n),
+						TokenValue::Hex(n) => Address::Literal(n),
+						TokenValue::Symbol(s) => Address::Label(s),
+						_ => return ParseError::new(lexer, "Expected address or label after .origin")
+					}
+				))
+			} else {
+				ParseError::new(lexer, "Expected address or label after .origin")
+			}
+		}
+
+		"define" => {
+			// Consume label
+			let label = unwrap_token!(consume!(lexer, TokenValue::Symbol(_), "Expected label after .define")?, Symbol);
+
+			// Consume address
+			if let Some(token) = lexer.next() {
+				Ok(Pragma::Define(label,
+					match token.value {
+						TokenValue::Bin(n) => Address::Literal(n),
+						TokenValue::Oct(n) => Address::Literal(n),
+						TokenValue::Dec(n) => Address::Literal(n),
+						TokenValue::Hex(n) => Address::Literal(n),
+						TokenValue::Symbol(s) => Address::Label(s),
+						_ => return ParseError::new(lexer, "Expected address or label after .define [label]")
+					}
+				))
+			} else {
+				ParseError::new(lexer, "Expected address or label after .define [label]")
+			}
+		}
+
+		"include" => {
+			// Consume include path as string
+			if let Some(token) = optional!(lexer, TokenValue::String(_)) {
+				Ok(Pragma::Include(unwrap_token!(token, String)))
+			} else {
+				ParseError::new(lexer, "Expected string with include path")
+			}
+		}
+
+		// Invalid pragma
+		_ => ParseError::new(lexer, "Invalid pragma")
+	}
+}
+
 // Parses everything in the line after the label
 fn parse_post_label(lexer: &mut Lexer) -> Result<LineValue, ParseError> {
 	// Parse instruction
@@ -304,6 +438,10 @@ fn parse_post_label(lexer: &mut Lexer) -> Result<LineValue, ParseError> {
 		// Parse operand
 		parse_operand(lexer, &mut instr)?;
 		Ok(LineValue::Instruction(instr))
+
+	// Parse pragma
+	} else if let Some(_) = optional!(lexer, TokenValue::Dot) {
+		Ok(LineValue::Pragma(parse_pragma(lexer)?))
 
 	// Nothing after label
 	} else {
@@ -321,13 +459,15 @@ fn parse_line(lexer: &mut Lexer) -> Result<Line, ParseError> {
 
 	// First token
 	let state = lexer.save();
-	let label = consume!(lexer, TokenValue::Symbol(_), "Expected opcode or label")?;
+	let label = optional!(lexer, TokenValue::Symbol(_));
 
 	// First token is a label
-	if let Some(_) = optional!(lexer, TokenValue::Colon) {
-		line.label = unwrap_token!(label, Symbol);
-	} else {
-		lexer.recall(state);
+	if let Some(label) = label {
+		if let Some(_) = optional!(lexer, TokenValue::Colon) {
+			line.label = unwrap_token!(label, Symbol);
+		} else {
+			lexer.recall(state);
+		}
 	}
 
 	// Parse everything after the label
