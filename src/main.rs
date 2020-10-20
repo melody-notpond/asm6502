@@ -15,7 +15,7 @@ fn main() {
 
 	for file in &args[1..] {
 		let content = fs::read_to_string(file).unwrap_or_else(|_| {
-			panic!("failed");
+			panic!("Could not read file");
 		});
 
 		println!("Content:\n{}", content);

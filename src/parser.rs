@@ -205,6 +205,33 @@ fn parse_operand(lexer: &mut Lexer, line: &mut Line) -> Result<(), String> {
 		} else {
 			return Err(String::from("Expected right parenthesis or comma"));
 		}
+
+	// Everything else
+	} else if let Some(token) = lexer.peek() {
+		// Get address
+		lexer.next();
+		let addr = match token.value {
+			TokenValue::Bin(n) => Address::Literal(n),
+			TokenValue::Oct(n) => Address::Literal(n),
+			TokenValue::Dec(n) => Address::Literal(n),
+			TokenValue::Hex(n) => Address::Literal(n),
+			TokenValue::Symbol(s) => Address::Label(s),
+			_ => return Ok(())
+		};
+
+		// X and Y index addressing
+		line.addr_mode = if let Some(_) = optional!(lexer, TokenValue::Comma) {
+			AddressingMode::Implicit
+		} else {
+			// Zero page addressing (lda $00)
+			if let Address::Literal(0..=255) = addr {
+				AddressingMode::ZeroPage(addr)
+
+			// Absolute addressing (lda $1234; lda label)
+			} else {
+				AddressingMode::Absolute(addr)
+			}
+		}
 	}
 
 	Ok(())
