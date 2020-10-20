@@ -106,6 +106,39 @@ macro_rules! optional {
 	};
 }
 
+fn check_overflow(n: u16) -> Result<ImmediateValue, String>
+{
+	if n < 256 {
+		Ok(ImmediateValue::Literal(n as u8))
+	} else {
+		Err(String::from("Cannot use word as immediate value"))
+	}
+}
+
+fn parse_operand(lexer: &mut Lexer, line: &mut Line) -> Result<(), String> {
+	// Immediate values
+	if let Some(_) = optional!(lexer, TokenValue::Hash) {
+		let operand = match lexer.next() {
+			Some(token) => token,
+			None => return Err(String::from("Missing operand"))
+		};
+
+		// Match operand
+		line.addr_mode = AddressingMode::Immediate(
+			match operand.value {
+				TokenValue::Bin(n) => check_overflow(n),
+				TokenValue::Oct(n) => check_overflow(n),
+				TokenValue::Dec(n) => check_overflow(n),
+				TokenValue::Hex(n) => check_overflow(n),
+				TokenValue::Symbol(s) => Ok(ImmediateValue::Label(s)),
+				_ => Err(String::from(""))
+			}?
+		);
+	}
+
+	Ok(())
+}
+
 // Parses a line of 6502 assembly
 fn parse_line(lexer: &mut Lexer) -> Result<Line, String> {
 	let mut line = Line {
@@ -118,9 +151,8 @@ fn parse_line(lexer: &mut Lexer) -> Result<Line, String> {
 	let start_of_line = consume!(lexer, TokenValue::Symbol(_), "Expected opcode or label")?;
 
 	// First token is a label
-	if let Some(_) = peek!(lexer, TokenValue::Colon) {
+	if let Some(_) = optional!(lexer, TokenValue::Colon) {
 		line.label = unwrap_token!(start_of_line, Symbol);
-		consume!(lexer, TokenValue::Colon, "Expected colon")?;
 
 		// Optionally consume an opcode
 		if let Some(token) = optional!(lexer, TokenValue::Symbol(_)) {
@@ -132,7 +164,12 @@ fn parse_line(lexer: &mut Lexer) -> Result<Line, String> {
 		line.opcode = unwrap_token!(start_of_line, Symbol);
 	}
 
-	// Parse newline
+	// Parse the operand
+	if line.opcode != "" {
+		parse_operand(lexer, &mut line)?;
+	}
+
+	// Parse newline if not at eof
 	if let Some(_) = lexer.peek() {
 		consume!(lexer, TokenValue::Newline, "Expected end of line")?;
 	}
