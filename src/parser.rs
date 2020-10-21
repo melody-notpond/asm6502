@@ -79,7 +79,7 @@ pub struct ParseError {
 }
 
 impl ParseError {
-	fn new<T>(lexer: &Lexer, message: &str) -> Result<T, ParseError> {
+	pub fn new<T>(lexer: &Lexer, message: &str) -> Result<T, ParseError> {
 		Err(ParseError {
 			lino: lexer.get_lino(),
 			message: String::from(message),
