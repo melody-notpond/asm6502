@@ -467,12 +467,23 @@ fn parse_post_label(lexer: &mut Lexer) -> Result<LineValue, ParseError> {
 }
 
 // Parses a line of 6502 assembly
-fn parse_line(lexer: &mut Lexer) -> Result<Line, ParseError> {
+pub fn parse_line(lexer: &mut Lexer) -> Result<Option<Line>, ParseError> {
+	// Skip newlines
+	while let Some(_) = peek!(lexer, TokenValue::Newline) {
+		lexer.next();
+	}
+
+	// The line to eventually return
 	let mut line = Line {
 		lino: lexer.get_lino(),
 		label: String::from(""),
 		value: LineValue::None,
 	};
+
+	// Stop parsing if there's nothing left
+	if let None = lexer.peek() {
+		return Ok(None);
+	}
 
 	// First token
 	let state = lexer.save();
@@ -496,7 +507,7 @@ fn parse_line(lexer: &mut Lexer) -> Result<Line, ParseError> {
 	}
 
 	// Success!
-	Ok(line)
+	Ok(Some(line))
 }
 
 // Parses a 6502 assembly file
@@ -505,19 +516,12 @@ pub fn parse(lexer: &mut Lexer) -> Result<Vec<Line>, ParseError> {
 
 	// Iterate through all tokens
 	loop {
-		// Skip newlines
-		while let Some(_) = peek!(lexer, TokenValue::Newline) {
-			lexer.next();
-		}
-
-		// Stop parsing if there's nothing left
-		if let None = lexer.peek() {
+		// Get next line
+		if let Some(line) = parse_line(lexer)? {
+			lines.push(line);
+		} else {
 			break;
 		}
-
-		// Get next line
-		let line = parse_line(lexer)?;
-		lines.push(line);
 	}
 
 	// Success!
