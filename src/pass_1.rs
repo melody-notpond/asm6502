@@ -15,6 +15,7 @@ use crate::parser::{
 };
 
 // The value of an argument of an instruction
+#[derive(Debug)]
 pub enum InstructionArg {
 	NoArgs,
 	ByteArg(u8),
@@ -24,6 +25,7 @@ pub enum InstructionArg {
 }
 
 // An annotated line of assembly
+#[derive(Debug)]
 pub struct AnnotatedLine {
 	pub addr: u16,
 	pub opcode: u8,
@@ -31,6 +33,7 @@ pub struct AnnotatedLine {
 }
 
 // The result of the first pass
+#[derive(Debug)]
 pub struct FirstPassResult {
 	pub lines: Vec<AnnotatedLine>,
 	pub symbol_table: HashMap<String, u16>

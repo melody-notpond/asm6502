@@ -3,7 +3,7 @@ use std::fs;
 use std::process;
 
 use asm6502::lexer::Lexer;
-use asm6502::parser;
+use asm6502::pass_1;
 
 fn main() {
 	let args: Vec<String> = env::args().collect();
@@ -20,10 +20,8 @@ fn main() {
 
 		println!("Content:\n{}", content);
 		let mut lexer = Lexer::new(&content);
-		let lines = parser::parse(&mut lexer).expect("Invalid syntax");
+		let result = pass_1::first_pass(&mut lexer).expect("Error handling parsing or pass 1");
 
-		for line in lines {
-			println!("{:?}", line);
-		}
+		println!("{:#?}", result);
 	}
 }
