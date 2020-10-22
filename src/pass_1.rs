@@ -70,7 +70,7 @@ macro_rules! opcode_c_01 {
 				$line.opcode |= 0b000_000_00;
 
 				$line.arg = match a {
-					Address::Literal(n) => InstructionArg::ByteArg(parser::check_overflow(&$lexer, n)?),
+					Address::Literal(n) => InstructionArg::ByteArg(parser::check_overflow($lexer, n)?),
 					Address::Label(label) => InstructionArg::ByteLabelArg(label)
 				};
 
@@ -82,7 +82,7 @@ macro_rules! opcode_c_01 {
 				$line.opcode |= 0b000_001_00;
 
 				$line.arg = match a {
-					Address::Literal(n) => InstructionArg::ByteArg(parser::check_overflow(&$lexer, n)?),
+					Address::Literal(n) => InstructionArg::ByteArg(parser::check_overflow($lexer, n)?),
 					Address::Label(label) => InstructionArg::ByteLabelArg(label)
 				};
 
@@ -120,7 +120,7 @@ macro_rules! opcode_c_01 {
 				$line.opcode |= 0b000_100_00;
 
 				$line.arg = match a {
-					Address::Literal(n) => InstructionArg::ByteArg(parser::check_overflow(&$lexer, n)?),
+					Address::Literal(n) => InstructionArg::ByteArg(parser::check_overflow($lexer, n)?),
 					Address::Label(label) => InstructionArg::ByteLabelArg(label)
 				};
 
@@ -132,7 +132,7 @@ macro_rules! opcode_c_01 {
 				$line.opcode |= 0b000_101_00;
 
 				$line.arg = match a {
-					Address::Literal(n) => InstructionArg::ByteArg(parser::check_overflow(&$lexer, n)?),
+					Address::Literal(n) => InstructionArg::ByteArg(parser::check_overflow($lexer, n)?),
 					Address::Label(label) => InstructionArg::ByteLabelArg(label)
 				};
 
@@ -175,7 +175,7 @@ macro_rules! opcode_c_01 {
 			}
 
 			// Invalid argument
-			_ => return ParseError::new(&$lexer, &format!("Invalid argument for opcode '{}'", $instr.opcode))
+			_ => return ParseError::new($lexer, &format!("Invalid argument for opcode '{}'", $instr.opcode))
 		}
 	}};
 }
@@ -208,7 +208,7 @@ macro_rules! opcode_c_10 {
 				$line.opcode |= 0b000_001_00;
 
 				$line.arg = match a {
-					Address::Literal(n) => InstructionArg::ByteArg(parser::check_overflow(&$lexer, n)?),
+					Address::Literal(n) => InstructionArg::ByteArg(parser::check_overflow($lexer, n)?),
 					Address::Label(label) => InstructionArg::ByteLabelArg(label)
 				};
 
@@ -237,7 +237,7 @@ macro_rules! opcode_c_10 {
 				$line.opcode |= 0b000_101_00;
 
 				$line.arg = match a {
-					Address::Literal(n) => InstructionArg::ByteArg(parser::check_overflow(&$lexer, n)?),
+					Address::Literal(n) => InstructionArg::ByteArg(parser::check_overflow($lexer, n)?),
 					Address::Label(label) => InstructionArg::ByteLabelArg(label)
 				};
 
@@ -257,7 +257,7 @@ macro_rules! opcode_c_10 {
 			}
 
 			// Invalid argument
-			_ => return ParseError::new(&$lexer, &format!("Invalid argument for opcode '{}'", $instr.opcode))
+			_ => return ParseError::new($lexer, &format!("Invalid argument for opcode '{}'", $instr.opcode))
 		}
 	}};
 }
@@ -290,7 +290,7 @@ macro_rules! opcode_c_00 {
 				$line.opcode |= 0b000_001_00;
 
 				$line.arg = match a {
-					Address::Literal(n) => InstructionArg::ByteArg(parser::check_overflow(&$lexer, n)?),
+					Address::Literal(n) => InstructionArg::ByteArg(parser::check_overflow($lexer, n)?),
 					Address::Label(label) => InstructionArg::ByteLabelArg(label)
 				};
 
@@ -314,7 +314,7 @@ macro_rules! opcode_c_00 {
 				$line.opcode |= 0b000_101_00;
 
 				$line.arg = match a {
-					Address::Literal(n) => InstructionArg::ByteArg(parser::check_overflow(&$lexer, n)?),
+					Address::Literal(n) => InstructionArg::ByteArg(parser::check_overflow($lexer, n)?),
 					Address::Label(label) => InstructionArg::ByteLabelArg(label)
 				};
 
@@ -334,7 +334,7 @@ macro_rules! opcode_c_00 {
 			}
 
 			// Invalid argument
-			_ => return ParseError::new(&$lexer, &format!("Invalid argument for opcode '{}'", $instr.opcode))
+			_ => return ParseError::new($lexer, &format!("Invalid argument for opcode '{}'", $instr.opcode))
 		}
 	}};
 }
@@ -350,20 +350,20 @@ macro_rules! opcode_branch {
 		match $instr.addr_mode {
 			AddressingMode::ZeroPage(a) => {
 				$line.arg = match a {
-					Address::Literal(n) => InstructionArg::ByteArg(parser::check_overflow(&$lexer, n)?),
+					Address::Literal(n) => InstructionArg::ByteArg(parser::check_overflow($lexer, n)?),
 					Address::Label(label) => InstructionArg::RelativeLabelArg(label)
 				};
 			}
 
 			AddressingMode::Absolute(a) => {
 				$line.arg = match a {
-					Address::Literal(_) => return ParseError::new(&$lexer, "Branching out of bounds"),
+					Address::Literal(_) => return ParseError::new($lexer, "Branching out of bounds"),
 					Address::Label(label) => InstructionArg::RelativeLabelArg(label)
 				};
 			}
 
 			// Invalid argument
-			_ => return ParseError::new(&$lexer, &format!("Invalid argument for opcode '{}'", $instr.opcode))
+			_ => return ParseError::new($lexer, &format!("Invalid argument for opcode '{}'", $instr.opcode))
 		}
 	}};
 }
@@ -380,7 +380,7 @@ macro_rules! opcode_implicit {
 			AddressingMode::Implicit => {}
 
 			// Invalid argument
-			_ => return ParseError::new(&$lexer, &format!("Invalid argument for opcode '{}'", $instr.opcode))
+			_ => return ParseError::new($lexer, &format!("Invalid argument for opcode '{}'", $instr.opcode))
 		}
 	}};
 }
