@@ -14,7 +14,7 @@ use crate::parser::*;
 #[test]
 fn lexer_misc_chars() {
 	let string = String::from(".< >()\n#~");
-	let mut lexer = Lexer::new(&string);
+	let mut lexer = Lexer::new("", &string);
 	assert_eq!(lexer.next().unwrap().value, TokenValue::Dot);
 	assert_eq!(lexer.next().unwrap().value, TokenValue::LT);
 	assert_eq!(lexer.next().unwrap().value, TokenValue::GT);
@@ -32,7 +32,7 @@ fn lexer_misc_chars() {
 #[test]
 fn lexer_symbols() {
 	let string = String::from("hewwo HEWWO _underscore");
-	let mut lexer = Lexer::new(&string);
+	let mut lexer = Lexer::new("", &string);
 	assert_eq!(
 		lexer.next().unwrap().value,
 		TokenValue::Symbol(String::from("hewwo"))
@@ -51,7 +51,7 @@ fn lexer_symbols() {
 #[test]
 fn lexer_numbers() {
 	let string = String::from("%00101010 052 42 $2a $2A");
-	let mut lexer = Lexer::new(&string);
+	let mut lexer = Lexer::new("", &string);
 	assert_eq!(lexer.next().unwrap().value, TokenValue::Bin(42));
 	assert_eq!(lexer.next().unwrap().value, TokenValue::Oct(42));
 	assert_eq!(lexer.next().unwrap().value, TokenValue::Dec(42));
@@ -63,7 +63,7 @@ fn lexer_numbers() {
 #[test]
 fn lexer_strings() {
 	let string = String::from("\"hewwo\" \"this is a string\" \"this\nis\na\nmultiline\nstring\n\" \"this is an invalid string");
-	let mut lexer = Lexer::new(&string);
+	let mut lexer = Lexer::new("", &string);
 	assert_eq!(
 		lexer.next().unwrap().value,
 		TokenValue::String(String::from("hewwo"))
@@ -94,7 +94,7 @@ fn parser_labels_opcodes() {
 		label_without_an_opcode:
 	",
 	);
-	let mut lexer = Lexer::new(&string);
+	let mut lexer = Lexer::new("", &string);
 	let lines = match parse(&mut lexer) {
 		Ok(v) => v,
 		Err(_) => panic!("Lines should parse"),

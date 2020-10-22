@@ -44,6 +44,7 @@ pub struct AnnotatedLine {
 // The result of the first pass
 #[derive(Debug)]
 pub struct FirstPassResult {
+	pub filename: String,
 	pub lines: Vec<AnnotatedLine>,
 	pub symbol_table: HashMap<String, u16>
 }
@@ -691,6 +692,6 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 
 	// Success!
 	Ok(FirstPassResult {
-		lines, symbol_table
+		filename: lexer.get_filename().clone(), lines, symbol_table
 	})
 }

@@ -14,10 +14,30 @@ use crate::pass_1::{
 
 // Represents the result from the second pass
 #[derive(Debug)]
-pub struct SecondPassResult {
+pub struct AssemblerResult {
+	pub filename: String,
 	pub start: u16,
 	pub end: u16,
 	pub bytes: [u8; u16::MAX as usize + 1]
+}
+
+impl AssemblerResult {
+	// Merges two assembler results
+	pub fn merge(&mut self, other: &AssemblerResult) -> Result<(), String>{
+		if (other.start <= self.start && self.start <= other.end)
+		|| (other.start <= self.end && self.end <= other.end) {
+			Err(format!("Could not merge {} with {} (possible overwriting)", self.filename, other.filename))
+		} else {
+			self.start = self.start.min(other.start);
+			self.end = self.end.max(other.end);
+
+			for i in other.start..other.end {
+				self.bytes[i as usize] = other.bytes[i as usize];
+			}
+
+			Ok(())
+		}
+	}
 }
 
 // Check if code overwrites previously written code
@@ -30,7 +50,7 @@ macro_rules! check_overwrite {
 }
 
 // Performs the second pass on the code
-pub fn second_pass(first_pass: FirstPassResult) -> Result<SecondPassResult, ParseError> {
+pub fn second_pass(first_pass: FirstPassResult) -> Result<AssemblerResult, ParseError> {
 	let mut start = u16::MAX;
 	let mut end = 0u16;
 	let mut bytes = [0u8; u16::MAX as usize + 1];
@@ -149,7 +169,8 @@ pub fn second_pass(first_pass: FirstPassResult) -> Result<SecondPassResult, Pars
 	}
 
 	// Success!
-	Ok(SecondPassResult {
+	Ok(AssemblerResult {
+		filename: first_pass.filename,
 		start,
 		end,
 		bytes

@@ -59,6 +59,8 @@ pub struct LexerState {
 
 // Represents a lexer.
 pub struct Lexer {
+	filename: String,
+
 	// The state of the lexer
 	state: LexerState,
 
@@ -68,10 +70,11 @@ pub struct Lexer {
 
 impl Lexer {
 	// Creates a new lexer
-	pub fn new(string: &str) -> Lexer {
+	pub fn new(filename: &str, string: &str) -> Lexer {
 		let mut string = String::from(string);
 		string.push(' ');
 		Lexer {
+			filename: String::from(filename),
 			state: LexerState {
 				pos: 0,
 				lino: 1,
@@ -121,6 +124,10 @@ impl Lexer {
 
 	pub fn get_lino(&self) -> u32 {
 		self.state.lino
+	}
+
+	pub fn get_filename(&self) -> &String {
+		&self.filename
 	}
 
 	pub fn save(&self) -> LexerState {

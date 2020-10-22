@@ -1,3 +1,5 @@
+.define label 0
+
 .origin $2000
 lda $1234
 lda label
