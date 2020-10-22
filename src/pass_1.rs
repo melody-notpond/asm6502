@@ -59,7 +59,7 @@ fn add_symbol(symbol_table: &mut HashMap<String, u16>, key: String, value: u16) 
 
 // Opcodes that end with c=01
 macro_rules! opcode_c_01 {
-	($opcode: literal, $line: ident, $addr: ident, $instr: ident, $lexer: ident) => {{
+	($opcode: literal, $line: ident, $addr: ident, $instr: ident, $lexer: ident, $imm: literal) => {{
 		// Set opcode
 		$line.opcode = $opcode;
 		$addr += 1;
@@ -91,7 +91,7 @@ macro_rules! opcode_c_01 {
 			}
 
 			// lda #imm
-			AddressingMode::Immediate(i) => {
+			AddressingMode::Immediate(i) if $imm => {
 				$line.opcode |= 0b000_010_00;
 
 				$line.arg = match i {
@@ -411,14 +411,14 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 					// Match the opcode (aaa_bbb_cc)
 					match instr.opcode.to_lowercase().as_str() {
 						// c=01
-						"ora" => opcode_c_01!(0b000_000_01, line, addr, instr, lexer),
-						"and" => opcode_c_01!(0b001_000_01, line, addr, instr, lexer),
-						"eor" => opcode_c_01!(0b010_000_01, line, addr, instr, lexer),
-						"adc" => opcode_c_01!(0b011_000_01, line, addr, instr, lexer),
-						"sta" => opcode_c_01!(0b100_000_01, line, addr, instr, lexer),
-						"lda" => opcode_c_01!(0b101_000_01, line, addr, instr, lexer),
-						"cmp" => opcode_c_01!(0b110_000_01, line, addr, instr, lexer),
-						"sbc" => opcode_c_01!(0b111_000_01, line, addr, instr, lexer),
+						"ora" => opcode_c_01!(0b000_000_01, line, addr, instr, lexer, true ),
+						"and" => opcode_c_01!(0b001_000_01, line, addr, instr, lexer, true ),
+						"eor" => opcode_c_01!(0b010_000_01, line, addr, instr, lexer, true ),
+						"adc" => opcode_c_01!(0b011_000_01, line, addr, instr, lexer, true ),
+						"sta" => opcode_c_01!(0b100_000_01, line, addr, instr, lexer, false),
+						"lda" => opcode_c_01!(0b101_000_01, line, addr, instr, lexer, true ),
+						"cmp" => opcode_c_01!(0b110_000_01, line, addr, instr, lexer, true ),
+						"sbc" => opcode_c_01!(0b111_000_01, line, addr, instr, lexer, true ),
 
 						// c=10
 						"asl" => opcode_c_10!(0b000_000_10, line, addr, instr, lexer, ZeroPageX, AbsoluteX, false, true , true ),
@@ -572,6 +572,9 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 						"tya" => opcode_implicit!(0x98, line, addr, instr, lexer),
 						"tsx" => opcode_implicit!(0xBA, line, addr, instr, lexer),
 						"txs" => opcode_implicit!(0x9A, line, addr, instr, lexer),
+
+						// No operation
+						"nop" => opcode_implicit!(0xEA, line, addr, instr, lexer),
 
 						// Invalid opcode
 						_ => return ParseError::new_from_lexer(lexer, &format!("Invalid opcode '{}'", instr.opcode))

@@ -72,6 +72,7 @@ pub struct Line {
 	pub value: LineValue,
 }
 
+// Represents an error
 #[derive(Debug)]
 pub struct ParseError {
 	pub lino: u32,

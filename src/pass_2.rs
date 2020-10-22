@@ -26,30 +26,38 @@ pub fn second_pass(first_pass: FirstPassResult) -> Result<SecondPassResult, Pars
 	let mut end = 0u16;
 	let mut bytes = [0u8; 65536];
 
+	// Iterate over the lines of code
 	for line in first_pass.lines {
+		// Set the opcode
 		bytes[line.addr as usize] = line.opcode;
-		let last;
 
+		// Set the start index if necessary
 		if line.addr < start {
 			start = line.addr;
 		}
 
+		// Match the argument
+		let last;
 		match line.arg {
+			// No arguments
 			InstructionArg::NoArgs => {
 				last = line.addr
 			}
 
+			// 1 byte argument
 			InstructionArg::ByteArg(n) => {
 				last = line.addr + 1;
 				bytes[last as usize] = n;
 			}
 
+			// 1 word argument
 			InstructionArg::WordArg(n) => {
 				last = line.addr + 2;
 				bytes[line.addr as usize + 1] = n as u8;
 				bytes[last as usize] = (n >> 8) as u8;
 			}
 
+			// Decode byte label argument
 			InstructionArg::ByteLabelArg(label) => {
 				last = line.addr + 1;
 
@@ -64,6 +72,7 @@ pub fn second_pass(first_pass: FirstPassResult) -> Result<SecondPassResult, Pars
 				}
 			}
 
+			// Decode low byte of label argument
 			InstructionArg::ByteLabelLowArg(label) => {
 				last = line.addr + 1;
 
@@ -74,6 +83,7 @@ pub fn second_pass(first_pass: FirstPassResult) -> Result<SecondPassResult, Pars
 				}
 			}
 
+			// Decode high byte of label argument
 			InstructionArg::ByteLabelHighArg(label) => {
 				last = line.addr + 1;
 
@@ -84,6 +94,7 @@ pub fn second_pass(first_pass: FirstPassResult) -> Result<SecondPassResult, Pars
 				}
 			}
 
+			// Decode word label argument
 			InstructionArg::WordLabelArg(label) => {
 				last = line.addr + 2;
 
@@ -95,6 +106,7 @@ pub fn second_pass(first_pass: FirstPassResult) -> Result<SecondPassResult, Pars
 				}
 			}
 
+			// Decode relative label argument
 			InstructionArg::RelativeLabelArg(label) => {
 				last = line.addr + 1;
 
@@ -111,11 +123,13 @@ pub fn second_pass(first_pass: FirstPassResult) -> Result<SecondPassResult, Pars
 			}
 		}
 
+		// Set the end index
 		if end <= last {
 			end = last + 1;
 		}
 	}
 
+	// Success!
 	Ok(SecondPassResult {
 		start,
 		end,
