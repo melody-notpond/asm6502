@@ -12,14 +12,17 @@ use crate::pass_1::{
 	InstructionArg
 };
 
+// Represents the result from the second pass
+#[derive(Debug)]
 pub struct SecondPassResult {
 	pub start: u16,
 	pub end: u16,
 	pub bytes: [u8; 65536]
 }
 
+// Performs the second pass on the code
 pub fn second_pass(first_pass: FirstPassResult) -> Result<SecondPassResult, ParseError> {
-	let mut start = 2u16.pow(16);
+	let mut start = u16::MAX;
 	let mut end = 0u16;
 	let mut bytes = [0u8; 65536];
 

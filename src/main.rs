@@ -4,6 +4,7 @@ use std::process;
 
 use asm6502::lexer::Lexer;
 use asm6502::pass_1;
+use asm6502::pass_2;
 
 fn main() {
 	let args: Vec<String> = env::args().collect();
@@ -21,7 +22,11 @@ fn main() {
 		println!("Content:\n{}", content);
 		let mut lexer = Lexer::new(&content);
 		let result = pass_1::first_pass(&mut lexer).expect("Error handling parsing or pass 1");
+		let result = pass_2::second_pass(result).expect("Error handling pass 2");
 
-		println!("{:#?}", result);
+		for byte in &result.bytes[result.start as usize..result.end as usize] {
+			print!("{:02X} ", *byte);
+		}
+		println!();
 	}
 }

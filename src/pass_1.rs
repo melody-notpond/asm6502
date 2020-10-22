@@ -412,29 +412,29 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 					match instr.opcode.to_lowercase().as_str() {
 						// c=01
 						"ora" => opcode_c_01!(0b000_000_01, line, addr, instr, lexer),
-						"and" => opcode_c_01!(0b000_001_01, line, addr, instr, lexer),
-						"eor" => opcode_c_01!(0b000_010_01, line, addr, instr, lexer),
-						"adc" => opcode_c_01!(0b000_011_01, line, addr, instr, lexer),
-						"sta" => opcode_c_01!(0b000_100_01, line, addr, instr, lexer),
-						"lda" => opcode_c_01!(0b000_101_01, line, addr, instr, lexer),
-						"cmp" => opcode_c_01!(0b000_110_01, line, addr, instr, lexer),
-						"sbc" => opcode_c_01!(0b000_111_01, line, addr, instr, lexer),
+						"and" => opcode_c_01!(0b001_000_01, line, addr, instr, lexer),
+						"eor" => opcode_c_01!(0b010_000_01, line, addr, instr, lexer),
+						"adc" => opcode_c_01!(0b011_000_01, line, addr, instr, lexer),
+						"sta" => opcode_c_01!(0b100_000_01, line, addr, instr, lexer),
+						"lda" => opcode_c_01!(0b101_000_01, line, addr, instr, lexer),
+						"cmp" => opcode_c_01!(0b110_000_01, line, addr, instr, lexer),
+						"sbc" => opcode_c_01!(0b111_000_01, line, addr, instr, lexer),
 
 						// c=10
 						"asl" => opcode_c_10!(0b000_000_10, line, addr, instr, lexer, ZeroPageX, AbsoluteX, false, true , true ),
-						"rol" => opcode_c_10!(0b000_001_10, line, addr, instr, lexer, ZeroPageX, AbsoluteX, false, true , true ),
-						"lsr" => opcode_c_10!(0b000_010_10, line, addr, instr, lexer, ZeroPageX, AbsoluteX, false, true , true ),
-						"ror" => opcode_c_10!(0b000_011_10, line, addr, instr, lexer, ZeroPageX, AbsoluteX, false, true , true ),
-						"stx" => opcode_c_10!(0b000_100_10, line, addr, instr, lexer, ZeroPageY, AbsoluteY, false, false, false),
-						"ldx" => opcode_c_10!(0b000_101_10, line, addr, instr, lexer, ZeroPageY, AbsoluteY, true , false, true ),
-						"dec" => opcode_c_10!(0b000_110_10, line, addr, instr, lexer, ZeroPageX, AbsoluteX, false, false, true ),
-						"inc" => opcode_c_10!(0b000_111_10, line, addr, instr, lexer, ZeroPageX, AbsoluteX, false, false, true ),
+						"rol" => opcode_c_10!(0b001_000_10, line, addr, instr, lexer, ZeroPageX, AbsoluteX, false, true , true ),
+						"lsr" => opcode_c_10!(0b010_000_10, line, addr, instr, lexer, ZeroPageX, AbsoluteX, false, true , true ),
+						"ror" => opcode_c_10!(0b011_000_10, line, addr, instr, lexer, ZeroPageX, AbsoluteX, false, true , true ),
+						"stx" => opcode_c_10!(0b100_000_10, line, addr, instr, lexer, ZeroPageY, AbsoluteY, false, false, false),
+						"ldx" => opcode_c_10!(0b101_000_10, line, addr, instr, lexer, ZeroPageY, AbsoluteY, true , false, true ),
+						"dec" => opcode_c_10!(0b110_000_10, line, addr, instr, lexer, ZeroPageX, AbsoluteX, false, false, true ),
+						"inc" => opcode_c_10!(0b111_000_10, line, addr, instr, lexer, ZeroPageX, AbsoluteX, false, false, true ),
 
 						// c=00
-						"sty" => opcode_c_00!(0b000_100_00, line, addr, instr, lexer, false, true , false),
-						"ldy" => opcode_c_00!(0b000_101_00, line, addr, instr, lexer, true , true , true ),
-						"cpy" => opcode_c_00!(0b000_110_00, line, addr, instr, lexer, true , false, false),
-						"cpx" => opcode_c_00!(0b000_111_00, line, addr, instr, lexer, true , false, false),
+						"sty" => opcode_c_00!(0b100_000_00, line, addr, instr, lexer, false, true , false),
+						"ldy" => opcode_c_00!(0b101_000_00, line, addr, instr, lexer, true , true , true ),
+						"cpy" => opcode_c_00!(0b110_000_00, line, addr, instr, lexer, true , false, false),
+						"cpx" => opcode_c_00!(0b111_000_00, line, addr, instr, lexer, true , false, false),
 
 						// Bit
 						"bit" => {
@@ -450,7 +450,7 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 										Address::Label(label) => InstructionArg::ByteLabelArg(label)
 									};
 
-									addr += 1;
+									addr += 2;
 								}
 
 								// bit $addr
@@ -462,7 +462,7 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 										Address::Label(label) => InstructionArg::WordLabelArg(label)
 									};
 
-									addr += 2;
+									addr += 3;
 								}
 
 								_ => return ParseError::new_from_lexer(&lexer, &format!("Invalid argument for opcode '{}'", instr.opcode))
@@ -481,7 +481,7 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 										Address::Label(label) => InstructionArg::WordLabelArg(label)
 									};
 
-									addr += 2;
+									addr += 3;
 								}
 
 								// jmp ($addr)
@@ -493,7 +493,7 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 										Address::Label(label) => InstructionArg::WordLabelArg(label)
 									};
 
-									addr += 2;
+									addr += 3;
 								}
 
 								_ => return ParseError::new_from_lexer(&lexer, &format!("Invalid argument for opcode '{}'", instr.opcode))
