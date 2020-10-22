@@ -178,7 +178,7 @@ macro_rules! opcode_c_10 {
 
 		// Match the addressing mode
 		match $instr.addr_mode {
-			// asl #imm
+			// ldx #imm
 			AddressingMode::Immediate(i) if $imm => {
 				$line.opcode |= 0b000_000_00;
 
@@ -235,6 +235,83 @@ macro_rules! opcode_c_10 {
 
 			// asl $addr, x
 			AddressingMode::$absx(a) if $absxincl => {
+				$line.opcode |= 0b000_111_00;
+
+				$line.arg = match a {
+					Address::Literal(n) => InstructionArg::WordArg(n),
+					Address::Label(label) => InstructionArg::WordLabelArg(label)
+				};
+
+				$addr += 2;
+			}
+
+			// Invalid argument
+			_ => return ParseError::new(&$lexer, &format!("Invalid argument for opcode '{}'", $instr.opcode))
+		}
+	}};
+}
+
+// Opcodes that end with c=00
+macro_rules! opcode_c_00 {
+	($opcode: literal, $line: ident, $addr: ident, $instr: ident, $lexer: ident, $imm: literal, $zpx: literal, $absx: literal) => {{
+		// Set opcode
+		$line.opcode = $opcode;
+		$addr += 1;
+
+		// Match the addressing mode
+		match $instr.addr_mode {
+			// ldy #imm
+			AddressingMode::Immediate(i) if $imm => {
+				$line.opcode |= 0b000_000_00;
+
+				$line.arg = match i {
+					ImmediateValue::Literal(n) => InstructionArg::ByteArg(n),
+					ImmediateValue::Label(label) => InstructionArg::ByteLabelArg(label),
+					ImmediateValue::LowByte(label) => InstructionArg::ByteLabelLowArg(label),
+					ImmediateValue::HighByte(label) => InstructionArg::ByteLabelHighArg(label),
+				};
+
+				$addr += 1;
+			}
+
+			// ldy $zp
+			AddressingMode::ZeroPage(a) => {
+				$line.opcode |= 0b000_001_00;
+
+				$line.arg = match a {
+					Address::Literal(n) => InstructionArg::ByteArg(parser::check_overflow(&$lexer, n)?),
+					Address::Label(label) => InstructionArg::ByteLabelArg(label)
+				};
+
+				$addr += 1;
+			}
+
+			// ldy $addr
+			AddressingMode::Absolute(a) => {
+				$line.opcode |= 0b000_011_00;
+
+				$line.arg = match a {
+					Address::Literal(n) => InstructionArg::WordArg(n),
+					Address::Label(label) => InstructionArg::WordLabelArg(label)
+				};
+
+				$addr += 2;
+			}
+
+			// ldy $zp, x
+			AddressingMode::ZeroPageX(a) if $zpx => {
+				$line.opcode |= 0b000_101_00;
+
+				$line.arg = match a {
+					Address::Literal(n) => InstructionArg::ByteArg(parser::check_overflow(&$lexer, n)?),
+					Address::Label(label) => InstructionArg::ByteLabelArg(label)
+				};
+
+				$addr += 1;
+			}
+
+			// ldy $addr, x
+			AddressingMode::AbsoluteX(a) if $absx => {
 				$line.opcode |= 0b000_111_00;
 
 				$line.arg = match a {
@@ -339,6 +416,12 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 						"ldx" => opcode_c_10!(0b000_101_10, line, addr, instr, lexer, ZeroPageY, AbsoluteY, true , false, true ),
 						"dec" => opcode_c_10!(0b000_110_10, line, addr, instr, lexer, ZeroPageX, AbsoluteX, false, false, true ),
 						"inc" => opcode_c_10!(0b000_111_10, line, addr, instr, lexer, ZeroPageX, AbsoluteX, false, false, true ),
+
+						// c=00
+						"sty" => opcode_c_00!(0b000_100_00, line, addr, instr, lexer, false, true , false),
+						"ldy" => opcode_c_00!(0b000_101_00, line, addr, instr, lexer, true , true , true ),
+						"cpy" => opcode_c_00!(0b000_110_00, line, addr, instr, lexer, true , false, false),
+						"cpx" => opcode_c_00!(0b000_111_00, line, addr, instr, lexer, true , false, false),
 
 						// Bit
 						"bit" => {
