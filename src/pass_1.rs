@@ -25,6 +25,7 @@ pub enum InstructionArg {
 	NoArgs,
 	ByteArg(u8),
 	ByteLabelArg(String),
+	RelativeLabelArg(String),
 	ByteLabelLowArg(String),
 	ByteLabelHighArg(String),
 	WordArg(u16),
@@ -250,6 +251,35 @@ macro_rules! opcode_c_01 {
 // 	}};
 // }
 
+// Branching opcodes
+macro_rules! opcode_branch {
+	($opcode: literal, $line: ident, $addr: ident, $instr: ident, $lexer: ident) => {{
+		// Set opcode
+		$line.opcode = $opcode;
+		$addr += 2;
+
+		// Match the addressing mode
+		match $instr.addr_mode {
+			AddressingMode::ZeroPage(a) => {
+				$line.arg = match a {
+					Address::Literal(n) => InstructionArg::ByteArg(parser::check_overflow(&$lexer, n)?),
+					Address::Label(label) => InstructionArg::RelativeLabelArg(label)
+				};
+			}
+
+			AddressingMode::Absolute(a) => {
+				$line.arg = match a {
+					Address::Literal(_) => return ParseError::new(&$lexer, "Branching out of bounds"),
+					Address::Label(label) => InstructionArg::RelativeLabelArg(label)
+				};
+			}
+
+			// Invalid argument
+			_ => return ParseError::new(&$lexer, &format!("Invalid argument for opcode '{}'", $instr.opcode))
+		}
+	}};
+}
+
 // Performs the first pass on the code
 pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 	let mut symbol_table = HashMap::new();
@@ -356,6 +386,16 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 								_ => return ParseError::new(&lexer, &format!("Invalid argument for opcode '{}'", instr.opcode))
 							}
 						}
+
+						// Branching instructions
+						"bpl" => opcode_branch!(0x10, line, addr, instr, lexer),
+						"bmi" => opcode_branch!(0x30, line, addr, instr, lexer),
+						"bvc" => opcode_branch!(0x50, line, addr, instr, lexer),
+						"bvs" => opcode_branch!(0x70, line, addr, instr, lexer),
+						"bcc" => opcode_branch!(0x90, line, addr, instr, lexer),
+						"bcs" => opcode_branch!(0xB0, line, addr, instr, lexer),
+						"bne" => opcode_branch!(0xD0, line, addr, instr, lexer),
+						"beq" => opcode_branch!(0xF0, line, addr, instr, lexer),
 
 						// Invalid opcode
 						_ => return ParseError::new(lexer, &format!("Invalid opcode '{}'", instr.opcode))
