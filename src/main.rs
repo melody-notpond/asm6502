@@ -56,15 +56,11 @@ fn main() {
 			panic!("Could not read file");
 		});
 
-		println!("Content:\n{}", content);
 		let mut lexer = Lexer::new(&file, &content);
 		let result = pass_1::first_pass(&mut lexer).expect("Error handling parsing or pass 1");
 		let result = pass_2::second_pass(result).expect("Error handling pass 2");
 		final_result.merge(&result).expect("Error merging files");
 	}
 
-	for byte in &final_result.bytes[final_result.start as usize..final_result.end as usize] {
-		print!("{:02X} ", *byte);
-	}
-	println!();
+	fs::write(config.out, final_result.bytes).expect("Error writing file");
 }
