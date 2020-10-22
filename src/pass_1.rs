@@ -140,6 +140,17 @@ macro_rules! opcode_c_01 {
 			}
 
 			// lda $addr, y
+			AddressingMode::ZeroPageY(a) => {
+				$line.opcode |= 0b000_110_00;
+
+				$line.arg = match a {
+					Address::Literal(n) => InstructionArg::WordArg(n),
+					Address::Label(label) => InstructionArg::WordLabelArg(label)
+				};
+
+				$addr += 2;
+			}
+
 			AddressingMode::AbsoluteY(a) => {
 				$line.opcode |= 0b000_110_00;
 

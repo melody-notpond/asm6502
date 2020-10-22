@@ -9,3 +9,4 @@ lda $03, x
 
 lda $1234, y
 lda label, y
+lda $03, y
