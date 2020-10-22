@@ -170,86 +170,86 @@ macro_rules! opcode_c_01 {
 }
 
 // Opcodes that end with c=01
-// macro_rules! opcode_c_10 {
-// 	($opcode: literal, $line: ident, $addr: ident, $instr: ident, $lexer: ident, $zpx: ident, $absx: ident) => {{
-// 		// Set opcode
-// 		$line.opcode = $opcode;
-// 		$addr += 1;
+macro_rules! opcode_c_10 {
+	($opcode: literal, $line: ident, $addr: ident, $instr: ident, $lexer: ident, $zpx: ident, $absx: ident, $imm: literal, $a: literal, $absxincl: literal) => {{
+		// Set opcode
+		$line.opcode = $opcode;
+		$addr += 1;
 
-// 		// Match the addressing mode
-// 		match $instr.addr_mode {
-// 			// asl #imm
-// 			AddressingMode::Immediate(i) => {
-// 				$line.opcode |= 0b000_000_00;
+		// Match the addressing mode
+		match $instr.addr_mode {
+			// asl #imm
+			AddressingMode::Immediate(i) if $imm => {
+				$line.opcode |= 0b000_000_00;
 
-// 				$line.arg = match i {
-// 					ImmediateValue::Literal(n) => InstructionArg::ByteArg(n),
-// 					ImmediateValue::Label(label) => InstructionArg::ByteLabelArg(label),
-// 					ImmediateValue::LowByte(label) => InstructionArg::ByteLabelLowArg(label),
-// 					ImmediateValue::HighByte(label) => InstructionArg::ByteLabelHighArg(label),
-// 				};
+				$line.arg = match i {
+					ImmediateValue::Literal(n) => InstructionArg::ByteArg(n),
+					ImmediateValue::Label(label) => InstructionArg::ByteLabelArg(label),
+					ImmediateValue::LowByte(label) => InstructionArg::ByteLabelLowArg(label),
+					ImmediateValue::HighByte(label) => InstructionArg::ByteLabelHighArg(label),
+				};
 
-// 				$addr += 1;
-// 			}
+				$addr += 1;
+			}
 
-// 			// asl $zp
-// 			AddressingMode::ZeroPage(a) => {
-// 				$line.opcode |= 0b000_001_00;
+			// asl $zp
+			AddressingMode::ZeroPage(a) => {
+				$line.opcode |= 0b000_001_00;
 
-// 				$line.arg = match a {
-// 					Address::Literal(n) => InstructionArg::ByteArg(parser::check_overflow(&$lexer, n)?),
-// 					Address::Label(label) => InstructionArg::ByteLabelArg(label)
-// 				};
+				$line.arg = match a {
+					Address::Literal(n) => InstructionArg::ByteArg(parser::check_overflow(&$lexer, n)?),
+					Address::Label(label) => InstructionArg::ByteLabelArg(label)
+				};
 
-// 				$addr += 1;
-// 			}
+				$addr += 1;
+			}
 
-// 			// asl
-// 			AddressingMode::Implicit => {
-// 				$line.opcode |= 0b000_010_00;
-// 			}
+			// asl
+			AddressingMode::Implicit if $a => {
+				$line.opcode |= 0b000_010_00;
+			}
 
-// 			// asl $addr
-// 			AddressingMode::Absolute(a) => {
-// 				$line.opcode |= 0b000_011_00;
+			// asl $addr
+			AddressingMode::Absolute(a) => {
+				$line.opcode |= 0b000_011_00;
 
-// 				$line.arg = match a {
-// 					Address::Literal(n) => InstructionArg::WordArg(n),
-// 					Address::Label(label) => InstructionArg::WordLabelArg(label)
-// 				};
+				$line.arg = match a {
+					Address::Literal(n) => InstructionArg::WordArg(n),
+					Address::Label(label) => InstructionArg::WordLabelArg(label)
+				};
 
-// 				$addr += 2;
-// 			}
+				$addr += 2;
+			}
 
-// 			// asl $zp, x
-// 			AddressingMode::$zpx(a) => {
-// 				$line.opcode |= 0b000_101_00;
+			// asl $zp, x
+			AddressingMode::$zpx(a) => {
+				$line.opcode |= 0b000_101_00;
 
-// 				$line.arg = match a {
-// 					Address::Literal(n) => InstructionArg::ByteArg(parser::check_overflow(&$lexer, n)?),
-// 					Address::Label(label) => InstructionArg::ByteLabelArg(label)
-// 				};
+				$line.arg = match a {
+					Address::Literal(n) => InstructionArg::ByteArg(parser::check_overflow(&$lexer, n)?),
+					Address::Label(label) => InstructionArg::ByteLabelArg(label)
+				};
 
-// 				$addr += 1;
-// 			}
+				$addr += 1;
+			}
 
-// 			// asl $addr, x
-// 			AddressingMode::$absx(a) => {
-// 				$line.opcode |= 0b000_111_00;
+			// asl $addr, x
+			AddressingMode::$absx(a) if $absxincl => {
+				$line.opcode |= 0b000_111_00;
 
-// 				$line.arg = match a {
-// 					Address::Literal(n) => InstructionArg::WordArg(n),
-// 					Address::Label(label) => InstructionArg::WordLabelArg(label)
-// 				};
+				$line.arg = match a {
+					Address::Literal(n) => InstructionArg::WordArg(n),
+					Address::Label(label) => InstructionArg::WordLabelArg(label)
+				};
 
-// 				$addr += 2;
-// 			}
+				$addr += 2;
+			}
 
-// 			// Invalid argument
-// 			_ => return ParseError::new(&$lexer, &format!("Invalid argument for opcode '{}'", $instr.opcode))
-// 		}
-// 	}};
-// }
+			// Invalid argument
+			_ => return ParseError::new(&$lexer, &format!("Invalid argument for opcode '{}'", $instr.opcode))
+		}
+	}};
+}
 
 // Branching opcodes
 macro_rules! opcode_branch {
@@ -331,14 +331,14 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 						"sbc" => opcode_c_01!(0b000_111_01, line, addr, instr, lexer),
 
 						// c=10
-						// "asl" => opcode_c_10!(0b000_000_10, line, addr, instr, lexer, ZeroPageX, AbsoluteX),
-						// "rol" => opcode_c_10!(0b000_001_10, line, addr, instr, lexer, ZeroPageX, AbsoluteX),
-						// "lsr" => opcode_c_10!(0b000_010_10, line, addr, instr, lexer, ZeroPageX, AbsoluteX),
-						// "ror" => opcode_c_10!(0b000_011_10, line, addr, instr, lexer, ZeroPageX, AbsoluteX),
-						// "stx" => opcode_c_10!(0b000_100_10, line, addr, instr, lexer, ZeroPageY, AbsoluteY),
-						// "ldx" => opcode_c_10!(0b000_101_10, line, addr, instr, lexer, ZeroPageY, AbsoluteY),
-						// "dec" => opcode_c_10!(0b000_110_10, line, addr, instr, lexer, ZeroPageX, AbsoluteX),
-						// "inc" => opcode_c_10!(0b000_111_10, line, addr, instr, lexer, ZeroPageX, AbsoluteX),
+						"asl" => opcode_c_10!(0b000_000_10, line, addr, instr, lexer, ZeroPageX, AbsoluteX, false, true , true ),
+						"rol" => opcode_c_10!(0b000_001_10, line, addr, instr, lexer, ZeroPageX, AbsoluteX, false, true , true ),
+						"lsr" => opcode_c_10!(0b000_010_10, line, addr, instr, lexer, ZeroPageX, AbsoluteX, false, true , true ),
+						"ror" => opcode_c_10!(0b000_011_10, line, addr, instr, lexer, ZeroPageX, AbsoluteX, false, true , true ),
+						"stx" => opcode_c_10!(0b000_100_10, line, addr, instr, lexer, ZeroPageY, AbsoluteY, false, false, false),
+						"ldx" => opcode_c_10!(0b000_101_10, line, addr, instr, lexer, ZeroPageY, AbsoluteY, true , false, true ),
+						"dec" => opcode_c_10!(0b000_110_10, line, addr, instr, lexer, ZeroPageX, AbsoluteX, false, false, true ),
+						"inc" => opcode_c_10!(0b000_111_10, line, addr, instr, lexer, ZeroPageX, AbsoluteX, false, false, true ),
 
 						// Bit
 						"bit" => {
