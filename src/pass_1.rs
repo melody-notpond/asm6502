@@ -11,7 +11,12 @@ use std::collections::HashMap;
 use crate::lexer::Lexer;
 use crate::parser;
 use crate::parser::{
-	Address, LineValue, ParseError, Pragma
+	Address,
+	AddressingMode,
+	ImmediateValue,
+	LineValue,
+	ParseError,
+	Pragma
 };
 
 // The value of an argument of an instruction
@@ -20,6 +25,8 @@ pub enum InstructionArg {
 	NoArgs,
 	ByteArg(u8),
 	ByteLabelArg(String),
+	ByteLabelLowArg(String),
+	ByteLabelHighArg(String),
 	WordArg(u16),
 	WordLabelArg(String)
 }
@@ -48,6 +55,118 @@ fn add_symbol(symbol_table: &mut HashMap<String, u16>, key: String, value: u16) 
 	}
 }
 
+macro_rules! opcode_c_01 {
+	($opcode: literal, $line: ident, $addr: ident, $instr: ident, $lexer: ident) => {{
+		// Set opcode
+		$line.opcode = $opcode;
+		$addr += 1;
+
+		// Match the addressing mode
+		match $instr.addr_mode {
+			// lda ($addr, x)
+			AddressingMode::IndirectX(a) => {
+				$line.opcode |= 0b000_000_00;
+
+				$line.arg = match a {
+					Address::Literal(n) => InstructionArg::ByteArg(parser::check_overflow(&$lexer, n)?),
+					Address::Label(label) => InstructionArg::ByteLabelArg(label)
+				};
+
+				$addr += 1;
+			}
+
+			// lda $zp
+			AddressingMode::ZeroPage(a) => {
+				$line.opcode |= 0b000_001_00;
+
+				$line.arg = match a {
+					Address::Literal(n) => InstructionArg::ByteArg(parser::check_overflow(&$lexer, n)?),
+					Address::Label(label) => InstructionArg::ByteLabelArg(label)
+				};
+
+				$addr += 1;
+			}
+
+			// lda #imm
+			AddressingMode::Immediate(i) => {
+				$line.opcode |= 0b000_010_00;
+
+				$line.arg = match i {
+					ImmediateValue::Literal(n) => InstructionArg::ByteArg(n),
+					ImmediateValue::Label(label) => InstructionArg::ByteLabelArg(label),
+					ImmediateValue::LowByte(label) => InstructionArg::ByteLabelLowArg(label),
+					ImmediateValue::HighByte(label) => InstructionArg::ByteLabelHighArg(label),
+				};
+
+				$addr += 1;
+			}
+
+			// lda $abs
+			AddressingMode::Absolute(a) => {
+				$line.opcode |= 0b000_011_00;
+
+				$line.arg = match a {
+					Address::Literal(n) => InstructionArg::WordArg(n),
+					Address::Label(label) => InstructionArg::WordLabelArg(label)
+				};
+
+				$addr += 2;
+			}
+
+			// lda ($addr), y
+			AddressingMode::IndirectY(a) => {
+				$line.opcode |= 0b000_100_00;
+
+				$line.arg = match a {
+					Address::Literal(n) => InstructionArg::ByteArg(parser::check_overflow(&$lexer, n)?),
+					Address::Label(label) => InstructionArg::ByteLabelArg(label)
+				};
+
+				$addr += 1;
+			}
+
+			// lda $zp, x
+			AddressingMode::ZeroPageX(a) => {
+				$line.opcode |= 0b000_101_00;
+
+				$line.arg = match a {
+					Address::Literal(n) => InstructionArg::ByteArg(parser::check_overflow(&$lexer, n)?),
+					Address::Label(label) => InstructionArg::ByteLabelArg(label)
+				};
+
+				$addr += 1;
+			}
+
+			// lda $addr, y
+			AddressingMode::AbsoluteY(a) => {
+				$line.opcode |= 0b000_110_00;
+
+				$line.arg = match a {
+					Address::Literal(n) => InstructionArg::WordArg(n),
+					Address::Label(label) => InstructionArg::WordLabelArg(label)
+				};
+
+				$addr += 2;
+			}
+
+			// lda $addr, x
+			AddressingMode::AbsoluteX(a) => {
+				$line.opcode |= 0b000_111_00;
+
+				$line.arg = match a {
+					Address::Literal(n) => InstructionArg::WordArg(n),
+					Address::Label(label) => InstructionArg::WordLabelArg(label)
+				};
+
+				$addr += 2;
+			}
+
+			// Invalid argument
+			_ => return ParseError::new(&$lexer, &format!("Invalid argument for opcode '{}'", $instr.opcode))
+		}
+	}};
+}
+
 // Performs the first pass on the code
 pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 	let mut symbol_table = HashMap::new();
@@ -63,7 +182,29 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 			match line.value {
 				// Deal with instructions
 				LineValue::Instruction(instr) => {
-	
+					let mut line = AnnotatedLine {
+						addr: addr,
+						opcode: 0b000_000_00,
+						arg: InstructionArg::NoArgs
+					};
+
+					// Match the opcode (aaa_bbb_cc)
+					match instr.opcode.to_lowercase().as_str() {
+						// c=01
+						"ora" => opcode_c_01!(0b000_000_01, line, addr, instr, lexer),
+						"and" => opcode_c_01!(0b000_001_01, line, addr, instr, lexer),
+						"eor" => opcode_c_01!(0b000_010_01, line, addr, instr, lexer),
+						"adc" => opcode_c_01!(0b000_011_01, line, addr, instr, lexer),
+						"sta" => opcode_c_01!(0b000_100_01, line, addr, instr, lexer),
+						"lda" => opcode_c_01!(0b000_101_01, line, addr, instr, lexer),
+						"cmp" => opcode_c_01!(0b000_110_01, line, addr, instr, lexer),
+						"sbc" => opcode_c_01!(0b000_111_01, line, addr, instr, lexer),
+
+						// Invalid opcode
+						_ => return ParseError::new(lexer, &format!("Invalid opcode '{}'", instr.opcode))
+					}
+
+					lines.push(line);
 				}
 
 				// Deal with pragmas
@@ -161,12 +302,14 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 					}
 				}
 
-				LineValue::None => unreachable!("None case already handled")
+				// Do nothing
+				LineValue::None => {}
 			}
 		}
 
 	}
 
+	// Success!
 	Ok(FirstPassResult {
 		lines, symbol_table
 	})

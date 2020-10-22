@@ -148,7 +148,7 @@ macro_rules! optional {
 }
 
 // Checks if the literal is under 256 and returns an ImmediateValue if it is, an error if not
-fn check_overflow(lexer: &Lexer, n: u16) -> Result<u8, ParseError> {
+pub fn check_overflow(lexer: &Lexer, n: u16) -> Result<u8, ParseError> {
 	if n < 256 {
 		Ok(n as u8)
 	} else {
@@ -502,8 +502,11 @@ pub fn parse_line(lexer: &mut Lexer) -> Result<Option<Line>, ParseError> {
 	line.value = parse_post_label(lexer)?;
 
 	// Parse newline if not at eof
-	if let Some(_) = lexer.peek() {
-		consume!(lexer, TokenValue::Newline, "Expected end of line")?;
+	if let Some(token) = lexer.peek() {
+		if let TokenValue::Newline = token.value {}
+		else {
+			return ParseError::new(lexer, "Expected end of line")
+		}
 	}
 
 	// Success!
