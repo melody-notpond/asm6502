@@ -24,8 +24,9 @@ pub struct AssemblerResult {
 impl AssemblerResult {
 	// Merges two assembler results
 	pub fn merge(&mut self, other: &AssemblerResult) -> Result<(), String>{
-		if (other.start <= self.start && self.start <= other.end)
-		|| (other.start <= self.end && self.end <= other.end) {
+		if ((other.start <= self.start && self.start <= other.end)
+		 || (other.start <= self.end && self.end <= other.end))
+		&& !(self.start == u16::MAX && self.end == 0) {
 			Err(format!("Could not merge {} with {} (possible overwriting)", self.filename, other.filename))
 		} else {
 			self.start = self.start.min(other.start);

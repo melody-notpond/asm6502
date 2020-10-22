@@ -7,6 +7,7 @@
 //
 
 use std::collections::HashMap;
+use std::fs;
 
 use crate::lexer::Lexer;
 use crate::parser;
@@ -678,8 +679,18 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 							}
 						}
 
-						// Include a file (TODO)
-						Pragma::Include(_) => todo!()
+						// Include a file
+						Pragma::Include(file) => {
+							match fs::read_to_string(&file) {
+								Ok(s) => {
+									let mut lexer = Lexer::new(&file, &s);
+									let res = first_pass(&mut lexer)?;
+									symbol_table.extend(res.symbol_table);
+								}
+
+								Err(e) => return ParseError::new_from_lexer(lexer, &format!("Could not read included file {}: {}", &file, e))
+							}
+						}
 					}
 				}
 
