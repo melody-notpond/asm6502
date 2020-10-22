@@ -404,6 +404,35 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 							}
 						}
 
+						// Software interrupt
+						"brk" => {
+							line.opcode = 0x00;
+							addr += 2;
+
+							match instr.addr_mode {
+								AddressingMode::Implicit => {}
+								_ => return ParseError::new(&lexer, &format!("Invalid argument for opcode '{}'", instr.opcode))
+							}
+						}
+
+						// Jump to subroutine
+						"jsr" => {
+							line.opcode = 0x20;
+
+							match instr.addr_mode {
+								AddressingMode::Absolute(a) => {
+									line.arg = match a {
+										Address::Literal(a) => InstructionArg::WordArg(a),
+										Address::Label(label) => InstructionArg::WordLabelArg(label)
+									}
+								}
+
+								_ => return ParseError::new(&lexer, &format!("Invalid argument for opcode '{}'", instr.opcode))
+							}
+
+							addr += 3;
+						}
+
 						// Branching instructions
 						"bpl" => opcode_branch!(0x10, line, addr, instr, lexer),
 						"bmi" => opcode_branch!(0x30, line, addr, instr, lexer),
