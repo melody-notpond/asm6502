@@ -280,6 +280,23 @@ macro_rules! opcode_branch {
 	}};
 }
 
+// Opcodes that are only a single byte
+macro_rules! opcode_implicit {
+	($opcode: literal, $line: ident, $addr: ident, $instr: ident, $lexer: ident) => {{
+		// Set opcode
+		$line.opcode = $opcode;
+		$addr += 1;
+
+		// Match the addressing mode
+		match $instr.addr_mode {
+			AddressingMode::Implicit => {}
+
+			// Invalid argument
+			_ => return ParseError::new(&$lexer, &format!("Invalid argument for opcode '{}'", $instr.opcode))
+		}
+	}};
+}
+
 // Performs the first pass on the code
 pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 	let mut symbol_table = HashMap::new();
@@ -396,6 +413,40 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 						"bcs" => opcode_branch!(0xB0, line, addr, instr, lexer),
 						"bne" => opcode_branch!(0xD0, line, addr, instr, lexer),
 						"beq" => opcode_branch!(0xF0, line, addr, instr, lexer),
+
+						// Opcodes that are a single byte
+						// Returns
+						"rti" => opcode_implicit!(0x40, line, addr, instr, lexer),
+						"rts" => opcode_implicit!(0x60, line, addr, instr, lexer),
+
+						// Stack operations
+						"php" => opcode_implicit!(0x08, line, addr, instr, lexer),
+						"plp" => opcode_implicit!(0x28, line, addr, instr, lexer),
+						"pha" => opcode_implicit!(0x48, line, addr, instr, lexer),
+						"pla" => opcode_implicit!(0x68, line, addr, instr, lexer),
+
+						// Flag setting/clearing
+						"clc" => opcode_implicit!(0x18, line, addr, instr, lexer),
+						"sec" => opcode_implicit!(0x38, line, addr, instr, lexer),
+						"cli" => opcode_implicit!(0x58, line, addr, instr, lexer),
+						"sei" => opcode_implicit!(0x78, line, addr, instr, lexer),
+						"clv" => opcode_implicit!(0xB8, line, addr, instr, lexer),
+						"cld" => opcode_implicit!(0xD8, line, addr, instr, lexer),
+						"sed" => opcode_implicit!(0xF8, line, addr, instr, lexer),
+
+						// Incrementing/decrementing
+						"inx" => opcode_implicit!(0xE8, line, addr, instr, lexer),
+						"dex" => opcode_implicit!(0xCA, line, addr, instr, lexer),
+						"iny" => opcode_implicit!(0xC8, line, addr, instr, lexer),
+						"dey" => opcode_implicit!(0x88, line, addr, instr, lexer),
+
+						// Transfering registers
+						"tax" => opcode_implicit!(0xAA, line, addr, instr, lexer),
+						"txa" => opcode_implicit!(0x8A, line, addr, instr, lexer),
+						"tay" => opcode_implicit!(0xA8, line, addr, instr, lexer),
+						"tya" => opcode_implicit!(0x98, line, addr, instr, lexer),
+						"tsx" => opcode_implicit!(0xBA, line, addr, instr, lexer),
+						"txs" => opcode_implicit!(0x9A, line, addr, instr, lexer),
 
 						// Invalid opcode
 						_ => return ParseError::new(lexer, &format!("Invalid opcode '{}'", instr.opcode))
