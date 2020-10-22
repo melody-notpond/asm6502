@@ -35,6 +35,7 @@ pub enum InstructionArg {
 // An annotated line of assembly
 #[derive(Debug)]
 pub struct AnnotatedLine {
+	pub lino: u32,
 	pub addr: u16,
 	pub opcode: u8,
 	pub arg: InstructionArg
@@ -175,7 +176,7 @@ macro_rules! opcode_c_01 {
 			}
 
 			// Invalid argument
-			_ => return ParseError::new($lexer, &format!("Invalid argument for opcode '{}'", $instr.opcode))
+			_ => return ParseError::new_from_lexer($lexer, &format!("Invalid argument for opcode '{}'", $instr.opcode))
 		}
 	}};
 }
@@ -257,7 +258,7 @@ macro_rules! opcode_c_10 {
 			}
 
 			// Invalid argument
-			_ => return ParseError::new($lexer, &format!("Invalid argument for opcode '{}'", $instr.opcode))
+			_ => return ParseError::new_from_lexer($lexer, &format!("Invalid argument for opcode '{}'", $instr.opcode))
 		}
 	}};
 }
@@ -334,7 +335,7 @@ macro_rules! opcode_c_00 {
 			}
 
 			// Invalid argument
-			_ => return ParseError::new($lexer, &format!("Invalid argument for opcode '{}'", $instr.opcode))
+			_ => return ParseError::new_from_lexer($lexer, &format!("Invalid argument for opcode '{}'", $instr.opcode))
 		}
 	}};
 }
@@ -357,13 +358,13 @@ macro_rules! opcode_branch {
 
 			AddressingMode::Absolute(a) => {
 				$line.arg = match a {
-					Address::Literal(_) => return ParseError::new($lexer, "Branching out of bounds"),
+					Address::Literal(_) => return ParseError::new_from_lexer($lexer, "Branching out of bounds"),
 					Address::Label(label) => InstructionArg::RelativeLabelArg(label)
 				};
 			}
 
 			// Invalid argument
-			_ => return ParseError::new($lexer, &format!("Invalid argument for opcode '{}'", $instr.opcode))
+			_ => return ParseError::new_from_lexer($lexer, &format!("Invalid argument for opcode '{}'", $instr.opcode))
 		}
 	}};
 }
@@ -380,7 +381,7 @@ macro_rules! opcode_implicit {
 			AddressingMode::Implicit => {}
 
 			// Invalid argument
-			_ => return ParseError::new($lexer, &format!("Invalid argument for opcode '{}'", $instr.opcode))
+			_ => return ParseError::new_from_lexer($lexer, &format!("Invalid argument for opcode '{}'", $instr.opcode))
 		}
 	}};
 }
@@ -401,6 +402,7 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 				// Deal with instructions
 				LineValue::Instruction(instr) => {
 					let mut line = AnnotatedLine {
+						lino: lexer.get_lino(),
 						addr: addr,
 						opcode: 0b000_000_00,
 						arg: InstructionArg::NoArgs
@@ -463,7 +465,7 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 									addr += 2;
 								}
 
-								_ => return ParseError::new(&lexer, &format!("Invalid argument for opcode '{}'", instr.opcode))
+								_ => return ParseError::new_from_lexer(&lexer, &format!("Invalid argument for opcode '{}'", instr.opcode))
 							}
 						}
 
@@ -494,7 +496,7 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 									addr += 2;
 								}
 
-								_ => return ParseError::new(&lexer, &format!("Invalid argument for opcode '{}'", instr.opcode))
+								_ => return ParseError::new_from_lexer(&lexer, &format!("Invalid argument for opcode '{}'", instr.opcode))
 							}
 						}
 
@@ -505,7 +507,7 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 
 							match instr.addr_mode {
 								AddressingMode::Implicit => {}
-								_ => return ParseError::new(&lexer, &format!("Invalid argument for opcode '{}'", instr.opcode))
+								_ => return ParseError::new_from_lexer(&lexer, &format!("Invalid argument for opcode '{}'", instr.opcode))
 							}
 						}
 
@@ -521,7 +523,7 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 									}
 								}
 
-								_ => return ParseError::new(&lexer, &format!("Invalid argument for opcode '{}'", instr.opcode))
+								_ => return ParseError::new_from_lexer(&lexer, &format!("Invalid argument for opcode '{}'", instr.opcode))
 							}
 
 							addr += 3;
@@ -572,7 +574,7 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 						"txs" => opcode_implicit!(0x9A, line, addr, instr, lexer),
 
 						// Invalid opcode
-						_ => return ParseError::new(lexer, &format!("Invalid opcode '{}'", instr.opcode))
+						_ => return ParseError::new_from_lexer(lexer, &format!("Invalid opcode '{}'", instr.opcode))
 					}
 
 					lines.push(line);
@@ -584,6 +586,7 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 						// Push one byte
 						Pragma::Byte(byte) => {
 							lines.push(AnnotatedLine {
+								lino: lexer.get_lino(),
 								addr: addr,
 								opcode: byte,
 								arg: InstructionArg::NoArgs
@@ -595,6 +598,7 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 						Pragma::Bytes(bytes) => {
 							for byte in bytes {
 								lines.push(AnnotatedLine {
+									lino: lexer.get_lino(),
 									addr: addr,
 									opcode: byte,
 									arg: InstructionArg::NoArgs
@@ -610,7 +614,7 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 									// Labels must be already set to set the origin
 									match symbol_table.get(&label) {
 										Some(w) => *w,
-										None => return ParseError::new(lexer, &format!("Setting origin to value of undefined label {}", label))
+										None => return ParseError::new_from_lexer(lexer, &format!("Setting origin to value of undefined label {}", label))
 									}
 								}
 	
@@ -620,6 +624,7 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 	
 							// Push low byte
 							lines.push(AnnotatedLine {
+								lino: lexer.get_lino(),
 								addr: addr,
 								opcode: word as u8,
 								arg: InstructionArg::NoArgs
@@ -628,6 +633,7 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 	
 							// Push high byte
 							lines.push(AnnotatedLine {
+								lino: lexer.get_lino(),
 								addr: addr,
 								opcode: (word >> 8) as u8,
 								arg: InstructionArg::NoArgs
@@ -642,7 +648,7 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 									// Labels must be already set to set the origin
 									addr = match symbol_table.get(&label) {
 										Some(a) => *a,
-										None => return ParseError::new(lexer, &format!("Setting origin to value of undefined label {}", label))
+										None => return ParseError::new_from_lexer(lexer, &format!("Setting origin to value of undefined label {}", label))
 									}
 								}
 	
@@ -658,7 +664,7 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 								Address::Label(s) => {
 									let v = match symbol_table.get(&s) {
 										Some(v) => *v,
-										None => return ParseError::new(lexer, &format!("Setting label {} to value of undefined label {}", label, s))
+										None => return ParseError::new_from_lexer(lexer, &format!("Setting label {} to value of undefined label {}", label, s))
 									};
 									add_symbol(&mut symbol_table, label, v);
 								}

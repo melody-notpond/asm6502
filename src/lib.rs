@@ -9,5 +9,6 @@
 pub mod lexer;
 pub mod parser;
 pub mod pass_1;
+pub mod pass_2;
 
 mod tests;

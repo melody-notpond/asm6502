@@ -79,7 +79,14 @@ pub struct ParseError {
 }
 
 impl ParseError {
-	pub fn new<T>(lexer: &Lexer, message: &str) -> Result<T, ParseError> {
+	pub fn new<T>(lino: u32, message: &str) -> Result<T, ParseError> {
+		Err(ParseError {
+			lino,
+			message: String::from(message)
+		})
+	}
+
+	pub fn new_from_lexer<T>(lexer: &Lexer, message: &str) -> Result<T, ParseError> {
 		Err(ParseError {
 			lino: lexer.get_lino(),
 			message: String::from(message),
@@ -95,10 +102,10 @@ macro_rules! consume {
 				$lexer.next();
 				Ok(token)
 			} else {
-				ParseError::new($lexer, $err)
+				ParseError::new_from_lexer($lexer, $err)
 			}
 		} else {
-			ParseError::new($lexer, "Unexpected EOF")
+			ParseError::new_from_lexer($lexer, "Unexpected EOF")
 		}
 	};
 }
@@ -152,7 +159,7 @@ pub fn check_overflow(lexer: &Lexer, n: u16) -> Result<u8, ParseError> {
 	if n < 256 {
 		Ok(n as u8)
 	} else {
-		ParseError::new(lexer, "Cannot use word as immediate value")
+		ParseError::new_from_lexer(lexer, "Cannot use word as immediate value")
 	}
 }
 
@@ -163,7 +170,7 @@ fn parse_operand(lexer: &mut Lexer, instr: &mut Instruction) -> Result<(), Parse
 		// Get operand
 		let operand = match lexer.next() {
 			Some(token) => token,
-			None => return ParseError::new(lexer, "Missing operand"),
+			None => return ParseError::new_from_lexer(lexer, "Missing operand"),
 		};
 
 		// Match operand
@@ -184,7 +191,7 @@ fn parse_operand(lexer: &mut Lexer, instr: &mut Instruction) -> Result<(), Parse
 				Symbol
 			))),
 
-			_ => ParseError::new(lexer, "Expected literal, label, '<', or '>'"),
+			_ => ParseError::new_from_lexer(lexer, "Expected literal, label, '<', or '>'"),
 		}?);
 
 	// Indirect addressing
@@ -192,7 +199,7 @@ fn parse_operand(lexer: &mut Lexer, instr: &mut Instruction) -> Result<(), Parse
 		// Get address token
 		let addr = match lexer.next() {
 			Some(token) => token,
-			None => return ParseError::new(lexer, "Missing address"),
+			None => return ParseError::new_from_lexer(lexer, "Missing address"),
 		};
 
 		// Get address value
@@ -202,7 +209,7 @@ fn parse_operand(lexer: &mut Lexer, instr: &mut Instruction) -> Result<(), Parse
 			TokenValue::Dec(n) => Address::Literal(n),
 			TokenValue::Hex(n) => Address::Literal(n),
 			TokenValue::Symbol(s) => Address::Label(s),
-			_ => return ParseError::new(lexer, "Expected address"),
+			_ => return ParseError::new_from_lexer(lexer, "Expected address"),
 		};
 
 		// Indirect X addressing (lda (addr, X))
@@ -213,7 +220,7 @@ fn parse_operand(lexer: &mut Lexer, instr: &mut Instruction) -> Result<(), Parse
 				Symbol
 			);
 			if x != "x" && x != "X" {
-				return ParseError::new(lexer, "Expected X register");
+				return ParseError::new_from_lexer(lexer, "Expected X register");
 			}
 
 			// Consume right parenthesis
@@ -232,7 +239,7 @@ fn parse_operand(lexer: &mut Lexer, instr: &mut Instruction) -> Result<(), Parse
 					Symbol
 				);
 				if x != "y" && x != "Y" {
-					return ParseError::new(lexer, "Expected Y register");
+					return ParseError::new_from_lexer(lexer, "Expected Y register");
 				}
 
 				// Save
@@ -245,7 +252,7 @@ fn parse_operand(lexer: &mut Lexer, instr: &mut Instruction) -> Result<(), Parse
 
 		// Unpaired right parenthesis
 		} else {
-			return ParseError::new(lexer, "Expected right parenthesis or comma");
+			return ParseError::new_from_lexer(lexer, "Expected right parenthesis or comma");
 		}
 
 	// Everything else
@@ -292,7 +299,7 @@ fn parse_operand(lexer: &mut Lexer, instr: &mut Instruction) -> Result<(), Parse
 
 			// Error
 			} else {
-				return ParseError::new(lexer, "Expected X or Y register");
+				return ParseError::new_from_lexer(lexer, "Expected X or Y register");
 			}
 		} else {
 			// Zero page addressing (lda $00)
@@ -326,10 +333,10 @@ fn parse_pragma(lexer: &mut Lexer) -> Result<Pragma, ParseError> {
 					TokenValue::Oct(n) => check_overflow(lexer, n)?,
 					TokenValue::Dec(n) => check_overflow(lexer, n)?,
 					TokenValue::Hex(n) => check_overflow(lexer, n)?,
-					_ => return ParseError::new(lexer, "Expected byte after .byte"),
+					_ => return ParseError::new_from_lexer(lexer, "Expected byte after .byte"),
 				}))
 			} else {
-				return ParseError::new(lexer, "Expected byte after .byte");
+				return ParseError::new_from_lexer(lexer, "Expected byte after .byte");
 			}
 		}
 
@@ -357,7 +364,7 @@ fn parse_pragma(lexer: &mut Lexer) -> Result<Pragma, ParseError> {
 					}
 
 					// Not a byte
-					_ => return ParseError::new(lexer, "Invalid byte"),
+					_ => return ParseError::new_from_lexer(lexer, "Invalid byte"),
 				}
 
 				// Commas
@@ -376,10 +383,10 @@ fn parse_pragma(lexer: &mut Lexer) -> Result<Pragma, ParseError> {
 					TokenValue::Dec(n) => Address::Literal(n),
 					TokenValue::Hex(n) => Address::Literal(n),
 					TokenValue::Symbol(s) => Address::Label(s),
-					_ => return ParseError::new(lexer, "Expected address or label after .word"),
+					_ => return ParseError::new_from_lexer(lexer, "Expected address or label after .word"),
 				}))
 			} else {
-				ParseError::new(lexer, "Expected address or label after .word")
+				ParseError::new_from_lexer(lexer, "Expected address or label after .word")
 			}
 		}
 
@@ -392,10 +399,10 @@ fn parse_pragma(lexer: &mut Lexer) -> Result<Pragma, ParseError> {
 					TokenValue::Dec(n) => Address::Literal(n),
 					TokenValue::Hex(n) => Address::Literal(n),
 					TokenValue::Symbol(s) => Address::Label(s),
-					_ => return ParseError::new(lexer, "Expected address or label after .origin"),
+					_ => return ParseError::new_from_lexer(lexer, "Expected address or label after .origin"),
 				}))
 			} else {
-				ParseError::new(lexer, "Expected address or label after .origin")
+				ParseError::new_from_lexer(lexer, "Expected address or label after .origin")
 			}
 		}
 
@@ -417,7 +424,7 @@ fn parse_pragma(lexer: &mut Lexer) -> Result<Pragma, ParseError> {
 						TokenValue::Hex(n) => Address::Literal(n),
 						TokenValue::Symbol(s) => Address::Label(s),
 						_ => {
-							return ParseError::new(
+							return ParseError::new_from_lexer(
 								lexer,
 								"Expected address or label after .define [label]",
 							)
@@ -425,7 +432,7 @@ fn parse_pragma(lexer: &mut Lexer) -> Result<Pragma, ParseError> {
 					},
 				))
 			} else {
-				ParseError::new(lexer, "Expected address or label after .define [label]")
+				ParseError::new_from_lexer(lexer, "Expected address or label after .define [label]")
 			}
 		}
 
@@ -434,12 +441,12 @@ fn parse_pragma(lexer: &mut Lexer) -> Result<Pragma, ParseError> {
 			if let Some(token) = optional!(lexer, TokenValue::String(_)) {
 				Ok(Pragma::Include(unwrap_token!(token, String)))
 			} else {
-				ParseError::new(lexer, "Expected string with include path")
+				ParseError::new_from_lexer(lexer, "Expected string with include path")
 			}
 		}
 
 		// Invalid pragma
-		_ => ParseError::new(lexer, "Invalid pragma"),
+		_ => ParseError::new_from_lexer(lexer, "Invalid pragma"),
 	}
 }
 
@@ -505,7 +512,7 @@ pub fn parse_line(lexer: &mut Lexer) -> Result<Option<Line>, ParseError> {
 	if let Some(token) = lexer.peek() {
 		if let TokenValue::Newline = token.value {}
 		else {
-			return ParseError::new(lexer, "Expected end of line")
+			return ParseError::new_from_lexer(lexer, "Expected end of line")
 		}
 	}
 
