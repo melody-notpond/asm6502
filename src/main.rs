@@ -105,15 +105,25 @@ fn main() {
 			}
 			process::exit(1);
 		});
-	} else {
+	} else if final_result.end > final_result.start {
 		// Create contents of file
-		let mut contents: Vec<u8> = Vec::with_capacity((final_result.end - final_result.start + 2) as usize);
+		let mut contents: Vec<u8> = Vec::with_capacity((final_result.end - final_result.start) as usize + 2);
+
 		contents.push(final_result.start as u8);
 		contents.push((final_result.start >> 8) as u8);
 		contents.extend(&final_result.bytes[final_result.start as usize..final_result.end as usize]);
 
 		// Write code to file
 		fs::write(&out, contents).unwrap_or_else(|e| {
+			match e.kind() {
+				ErrorKind::PermissionDenied => eprintln!("Insufficient permissions to write {}", &out),
+				_ => eprintln!("Error occured whilst writing to {}: {}", &out, e)
+			}
+			process::exit(1);
+		});
+	} else {
+		// Write empty file
+		fs::write(&out, [0u8, 0]).unwrap_or_else(|e| {
 			match e.kind() {
 				ErrorKind::PermissionDenied => eprintln!("Insufficient permissions to write {}", &out),
 				_ => eprintln!("Error occured whilst writing to {}: {}", &out, e)
