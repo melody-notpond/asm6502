@@ -1,5 +1,6 @@
 use std::env;
 use std::fs;
+use std::io::ErrorKind;
 use std::process;
 
 use asm6502::lexer::Lexer;
@@ -60,24 +61,64 @@ fn main() {
 	// Iterate over every file
 	for file in config.files {
 		// Read file
-		let content = fs::read_to_string(&file).unwrap_or_else(|_| {
-			panic!("Could not read file");
+		let content = fs::read_to_string(&file).unwrap_or_else(|e| {
+			match e.kind() {
+				ErrorKind::NotFound => eprintln!("File {} not found", &file),
+				ErrorKind::PermissionDenied => eprintln!("Insufficient permissions to read {}", &file),
+				_ => eprintln!("Error occured whilst reading from {}: {}", &file, e)
+			}
+			process::exit(1);
 		});
 
-		// Parse file and generate code
+		// Parse file and generate ir
 		let mut lexer = Lexer::new(&file, &content);
-		let result = pass_1::first_pass(&mut lexer).expect("Error handling parsing or pass 1");
-		let result = pass_2::second_pass(result).expect("Error handling pass 2");
-		final_result.merge(&result).expect("Error merging files");
+		let result = pass_1::first_pass(&mut lexer)
+			.unwrap_or_else(|e| {
+				eprintln!("Error on {}:{}: {}", e.filename, e.lino, e.message);
+				process::exit(1);
+			}
+		);
+
+		// Generate code
+		let result = pass_2::second_pass(result)
+			.unwrap_or_else(|e| {
+				eprintln!("Error on {}:{}: {}", e.filename, e.lino, e.message);
+				process::exit(1);
+			}
+		);
+
+		// Merge code
+		final_result.merge(&result).unwrap_or_else(|e| {
+				eprintln!("Error: {}", e);
+				process::exit(1);
+			}
+		);
 	}
 
+	let out = config.out;
 	if config.full_disc {
-		fs::write(config.out, final_result.bytes).expect("Error writing file");
+		// Write disc to file
+		fs::write(&out, final_result.bytes).unwrap_or_else(|e| {
+			match e.kind() {
+				ErrorKind::PermissionDenied => eprintln!("Insufficient permissions to write {}", &out),
+				_ => eprintln!("Error occured whilst writing to {}: {}", &out, e)
+			}
+			process::exit(1);
+		});
 	} else {
+		// Create contents of file
 		let mut contents: Vec<u8> = Vec::with_capacity((final_result.end - final_result.start + 2) as usize);
 		contents.push(final_result.start as u8);
 		contents.push((final_result.start >> 8) as u8);
 		contents.extend(&final_result.bytes[final_result.start as usize..final_result.end as usize]);
-		fs::write(config.out, contents).expect("Error writing file");
+
+		// Write code to file
+		fs::write(&out, contents).unwrap_or_else(|e| {
+			match e.kind() {
+				ErrorKind::PermissionDenied => eprintln!("Insufficient permissions to write {}", &out),
+				_ => eprintln!("Error occured whilst writing to {}: {}", &out, e)
+			}
+			process::exit(1);
+		});
 	}
 }

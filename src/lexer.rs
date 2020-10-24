@@ -59,7 +59,7 @@ pub struct LexerState {
 
 // Represents a lexer.
 pub struct Lexer {
-	filename: String,
+	pub filename: String,
 
 	// The state of the lexer
 	state: LexerState,

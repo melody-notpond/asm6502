@@ -43,9 +43,9 @@ impl AssemblerResult {
 
 // Check if code overwrites previously written code
 macro_rules! check_overwrite {
-	($bytes: ident, $line: ident, $index: expr) => {
+	($first_pass: ident, $bytes: ident, $line: ident, $index: expr) => {
 		if $bytes[$index as usize] != 0 {
-			return ParseError::new($line.lino, "This line overrides previously written code");
+			return ParseError::new($first_pass.filename, $line.lino, "This line overrides previously written code");
 		}
 	};
 }
@@ -59,7 +59,7 @@ pub fn second_pass(first_pass: FirstPassResult) -> Result<AssemblerResult, Parse
 	// Iterate over the lines of code
 	for line in first_pass.lines {
 		// Set the opcode
-		check_overwrite!(bytes, line, line.addr);
+		check_overwrite!(first_pass, bytes, line, line.addr);
 		bytes[line.addr as usize] = line.opcode;
 
 		// Set the start index if necessary
@@ -78,16 +78,16 @@ pub fn second_pass(first_pass: FirstPassResult) -> Result<AssemblerResult, Parse
 			// 1 byte argument
 			InstructionArg::ByteArg(n) => {
 				last = line.addr + 1;
-				check_overwrite!(bytes, line, last);
+				check_overwrite!(first_pass, bytes, line, last);
 				bytes[last as usize] = n;
 			}
 
 			// 1 word argument
 			InstructionArg::WordArg(n) => {
 				last = line.addr + 2;
-				check_overwrite!(bytes, line, line.addr + 1);
+				check_overwrite!(first_pass, bytes, line, line.addr + 1);
 				bytes[line.addr as usize + 1] = n as u8;
-				check_overwrite!(bytes, line, last);
+				check_overwrite!(first_pass, bytes, line, last);
 				bytes[last as usize] = (n >> 8) as u8;
 			}
 
@@ -97,13 +97,13 @@ pub fn second_pass(first_pass: FirstPassResult) -> Result<AssemblerResult, Parse
 
 				if let Some(v) = first_pass.symbol_table.get(&label) {
 					if *v < 256 {
-						check_overwrite!(bytes, line, last);
+						check_overwrite!(first_pass, bytes, line, last);
 						bytes[last as usize] = *v as u8;
 					} else {
-						return ParseError::new(line.lino, &format!("Expected byte, found word {}", label));
+						return ParseError::new(first_pass.filename, line.lino, &format!("Expected byte, found word {}", label));
 					}
 				} else {
-					return ParseError::new(line.lino, &format!("Undeclared label '{}' used as value", label));
+					return ParseError::new(first_pass.filename, line.lino, &format!("Undeclared label '{}' used as value", label));
 				}
 			}
 
@@ -112,10 +112,10 @@ pub fn second_pass(first_pass: FirstPassResult) -> Result<AssemblerResult, Parse
 				last = line.addr + 1;
 
 				if let Some(v) = first_pass.symbol_table.get(&label) {
-					check_overwrite!(bytes, line, last);
+					check_overwrite!(first_pass, bytes, line, last);
 					bytes[last as usize] = *v as u8;
 				} else {
-					return ParseError::new(line.lino, &format!("Undeclared label '{}' used as value", label));
+					return ParseError::new(first_pass.filename, line.lino, &format!("Undeclared label '{}' used as value", label));
 				}
 			}
 
@@ -124,10 +124,10 @@ pub fn second_pass(first_pass: FirstPassResult) -> Result<AssemblerResult, Parse
 				last = line.addr + 1;
 
 				if let Some(v) = first_pass.symbol_table.get(&label) {
-					check_overwrite!(bytes, line, last);
+					check_overwrite!(first_pass, bytes, line, last);
 					bytes[last as usize] = (*v >> 8) as u8;
 				} else {
-					return ParseError::new(line.lino, &format!("Undeclared label '{}' used as value", label));
+					return ParseError::new(first_pass.filename, line.lino, &format!("Undeclared label '{}' used as value", label));
 				}
 			}
 
@@ -136,12 +136,12 @@ pub fn second_pass(first_pass: FirstPassResult) -> Result<AssemblerResult, Parse
 				last = line.addr + 2;
 
 				if let Some(v) = first_pass.symbol_table.get(&label) {
-					check_overwrite!(bytes, line, line.addr + 1);
+					check_overwrite!(first_pass, bytes, line, line.addr + 1);
 					bytes[line.addr as usize + 1] = *v as u8;
-					check_overwrite!(bytes, line, last);
+					check_overwrite!(first_pass, bytes, line, last);
 					bytes[last as usize] = (*v >> 8) as u8;
 				} else {
-					return ParseError::new(line.lino, &format!("Undeclared label '{}' used as value", label));
+					return ParseError::new(first_pass.filename, line.lino, &format!("Undeclared label '{}' used as value", label));
 				}
 			}
 
@@ -152,13 +152,13 @@ pub fn second_pass(first_pass: FirstPassResult) -> Result<AssemblerResult, Parse
 				if let Some(v) = first_pass.symbol_table.get(&label) {
 					let diff = *v as i32 - line.addr as i32 + 2;
 					if -128 <= diff && diff <= 127 {
-						check_overwrite!(bytes, line, last);
+						check_overwrite!(first_pass, bytes, line, last);
 						bytes[last as usize] = diff as u8;
 					} else {
-						return ParseError::new(line.lino, &format!("Label '{}' is too far away", label));
+						return ParseError::new(first_pass.filename, line.lino, &format!("Label '{}' is too far away", label));
 					}
 				} else {
-					return ParseError::new(line.lino, &format!("Undeclared label '{}' used as value", label));
+					return ParseError::new(first_pass.filename, line.lino, &format!("Undeclared label '{}' used as value", label));
 				}
 			}
 		}

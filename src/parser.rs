@@ -75,13 +75,15 @@ pub struct Line {
 // Represents an error
 #[derive(Debug)]
 pub struct ParseError {
+	pub filename: String,
 	pub lino: u32,
 	pub message: String,
 }
 
 impl ParseError {
-	pub fn new<T>(lino: u32, message: &str) -> Result<T, ParseError> {
+	pub fn new<T>(filename: String, lino: u32, message: &str) -> Result<T, ParseError> {
 		Err(ParseError {
+			filename,
 			lino,
 			message: String::from(message)
 		})
@@ -89,6 +91,7 @@ impl ParseError {
 
 	pub fn new_from_lexer<T>(lexer: &Lexer, message: &str) -> Result<T, ParseError> {
 		Err(ParseError {
+			filename: lexer.filename.clone(),
 			lino: lexer.get_lino(),
 			message: String::from(message),
 		})
