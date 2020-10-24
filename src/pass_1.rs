@@ -598,7 +598,7 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 							});
 							addr += 1;
 						}
-	
+
 						// Push a collection of bytes
 						Pragma::Bytes(bytes) => {
 							for byte in bytes {
@@ -611,7 +611,7 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 								addr += 1;
 							}
 						}
-	
+
 						// Push a word
 						Pragma::Word(word) => {
 							let word = match word {
@@ -622,11 +622,11 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 										None => return ParseError::new_from_lexer(lexer, &format!("Setting origin to value of undefined label {}", label))
 									}
 								}
-	
+
 								// Literal address
 								Address::Literal(w) => w
 							};
-	
+
 							// Push low byte
 							lines.push(AnnotatedLine {
 								lino: lexer.get_lino(),
@@ -635,7 +635,7 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 								arg: InstructionArg::NoArgs
 							});
 							addr += 1;
-	
+
 							// Push high byte
 							lines.push(AnnotatedLine {
 								lino: lexer.get_lino(),
@@ -645,7 +645,7 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 							});
 							addr += 1;
 						}
-	
+
 						// Set the origin
 						Pragma::Origin(a) => {
 							match a {
@@ -656,7 +656,7 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 										None => return ParseError::new_from_lexer(lexer, &format!("Setting origin to value of undefined label {}", label))
 									}
 								}
-	
+
 								// Literal address
 								Address::Literal(a) => addr = a
 							}
