@@ -150,7 +150,7 @@ pub fn second_pass(first_pass: FirstPassResult) -> Result<AssemblerResult, Parse
 				last = line.addr + 1;
 
 				if let Some(v) = first_pass.symbol_table.get(&label) {
-					let diff = *v as i32 - line.addr as i32 + 2;
+					let diff = *v as i32 - line.addr as i32 - 2;
 					if -128 <= diff && diff <= 127 {
 						check_overwrite!(first_pass, bytes, line, last);
 						bytes[last as usize] = diff as u8;
