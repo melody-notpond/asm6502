@@ -32,7 +32,7 @@ impl AssemblerResult {
 			self.start = self.start.min(other.start);
 			self.end = self.end.max(other.end);
 
-			for i in other.start..other.end {
+			for i in other.start..other.end + 1{
 				self.bytes[i as usize] = other.bytes[i as usize];
 			}
 

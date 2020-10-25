@@ -619,7 +619,7 @@ pub fn first_pass(lexer: &mut Lexer) -> Result<FirstPassResult, ParseError> {
 									// Labels must be already set to set the origin
 									match symbol_table.get(&label) {
 										Some(w) => *w,
-										None => return ParseError::new_from_lexer(lexer, &format!("Setting origin to value of undefined label {}", label))
+										None => return ParseError::new_from_lexer(lexer, &format!("Setting word to value of undefined label {}", label))
 									}
 								}
 
