@@ -9,7 +9,9 @@ Usage: `./asm6502 [-o output] [-d] [files]`
 
 ### Options
 - `-o output`/`--out output`: Set the output file (default is `a.out`)
-- `-d`/`--disc`: Set the format of the output file from a Commadore 64 object file to a full 64 kilobyte ram disc image
+- `-d`/`--disc`: Stops the assembler from setting the first two bytes of the file to be the address where the program is in memory and outputs the entire 64 kilobyte RAM disc image
+- `-s addr`/`--start addr`: Sets the first address to be placed in the output (inclusive; must be hexadecimal)
+- `-e addr`/`--end addr`: Sets the last address to be placed in the output (inclusive; must be hexadecimal)
 
 ## Assembler Specific Pragmas
 - `.define label value` - sets a label to have a value
