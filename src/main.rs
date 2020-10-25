@@ -84,7 +84,7 @@ fn main() {
 
 	// Check for files
 	if config.files.len() == 0 {
-		eprintln!("usage: {} [-o out] [-d] [files]", name);
+		eprintln!("usage: {} [-o out] [-d] [-s addr] [-e addr] [files]", name);
 		process::exit(1);
 	}
 

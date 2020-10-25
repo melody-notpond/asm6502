@@ -5,7 +5,7 @@
 Just run `cargo build --release` if you have cargo installed. If you don't then you should [install it](https://doc.rust-lang.org/stable/book/ch01-01-installation.html) before downloading this.
 
 ## Usage
-Usage: `./asm6502 [-o output] [-d] [files]`  
+Usage: `./asm6502 [-o out] [-d] [-s addr] [-e addr] [files]`  
 
 ### Options
 - `-o output`/`--out output`: Set the output file (default is `a.out`)
