@@ -164,8 +164,8 @@ pub fn second_pass(first_pass: FirstPassResult) -> Result<AssemblerResult, Parse
 		}
 
 		// Set the end index
-		if end <= last {
-			end = last + 1;
+		if end < last {
+			end = last;
 		}
 	}
 
